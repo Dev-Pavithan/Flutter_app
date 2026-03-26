@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:universal_html/html.dart' as html;
 import 'app_theme.dart';
+import 'pwa_interop.dart';
 import 'screens/dashboard_wrapper.dart';
 import 'screens/login_screen.dart';
 
@@ -29,7 +29,7 @@ class AttendanceApp extends StatelessWidget {
 
 class SplashGate extends StatefulWidget {
   final SharedPreferences prefs;
-  const SplashGate({super.key, required this.prefs});
+  const SplashGate( {super.key, required this.prefs});
 
   @override
   State<SplashGate> createState() => _SplashGateState();
@@ -42,16 +42,11 @@ class _SplashGateState extends State<SplashGate> {
     _checkStatus();
   }
 
-  bool get _isInstalled {
-    if (!kIsWeb) return true; // Mobile apps are "installed"
-    return html.window.matchMedia('(display-mode: standalone)').matches;
-  }
-
   void _checkStatus() async {
     final bool isLoggedIn = widget.prefs.getBool('isLoggedIn') ?? false;
     
-    // No artificial delay anymore, just enough for smooth transition
-    await Future.delayed(const Duration(milliseconds: 300)); 
+    // Smooth check
+    await Future.delayed(const Duration(milliseconds: 500)); 
 
     if (!mounted) return;
 
@@ -61,11 +56,16 @@ class _SplashGateState extends State<SplashGate> {
         MaterialPageRoute(builder: (context) => const DashboardWrapper()),
       );
     } else {
-      // If installed, go straight to Login. 
-      // If not, also go to Login but we'll show a popup there.
+      // Direct navigation to Login
+      // LoginScreen will handle the popup if not installed
+      bool installed = true;
+      if (kIsWeb) {
+        installed = isPWAInstalled();
+      }
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LoginScreen(showInstallPrompt: !_isInstalled)),
+        MaterialPageRoute(builder: (context) => LoginScreen(showInstallPrompt: !installed)),
       );
     }
   }

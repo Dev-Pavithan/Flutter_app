@@ -26,6 +26,32 @@
     @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 
+  <script>
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      console.log('PWA: Prompt Captured');
+      // Dispatch event for Flutter to hear
+      window.dispatchEvent(new Event('pwa_prompt_ready'));
+    });
+
+    window.installPWA = async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA Outcome: ${outcome}`);
+        deferredPrompt = null;
+        return outcome === 'accepted';
+      }
+      return false;
+    };
+
+    window.isPWAInstalled = () => {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </head>
 <body>

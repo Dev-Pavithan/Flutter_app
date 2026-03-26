@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:universal_html/html.dart' as html;
 import '../app_theme.dart';
 import '../mock_data.dart';
+import '../pwa_interop.dart';
 import 'dashboard_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,8 +25,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.showInstallPrompt) {
+    // Use the real PWA check from JS
+    if (!isPWAInstalled()) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showInstallPopup());
+    }
+  }
+
+  Future<void> _triggerPWAInstall() async {
+    final result = await installPWA();
+    if (result == true && mounted) {
+      Navigator.pop(context); // Close popup
     }
   }
 
@@ -46,49 +54,35 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'For a better and secure experience, please install the app in your device.',
+              'For the full product experience and offline access, please install WSTSC Attendance.',
               style: TextStyle(color: Colors.white70),
             ),
-            const SizedBox(height: 20),
-            _buildStep(1, 'Tap the share/options icon'),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _triggerPWAInstall,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                minimumSize: const Size.fromHeight(56),
+              ),
+              child: const Text('Install Now', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
             const SizedBox(height: 12),
-            _buildStep(2, 'Select "Add to Home Screen"'),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Maybe Later', style: TextStyle(color: Colors.white38)),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Maybe Later', style: TextStyle(color: Colors.white38)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // In production, we'd trigger the PWA install prompt
-              // For mock, we'll suggest manual action
-            },
-            child: const Text('Got it!'),
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _buildStep(int num, String txt) {
-    return Row(
-      children: [
-        CircleAvatar(radius: 10, backgroundColor: AppTheme.primaryColor, child: Text(num.toString(), style: const TextStyle(fontSize: 10, color: Colors.white))),
-        const SizedBox(width: 8),
-        Expanded(child: Text(txt, style: const TextStyle(fontSize: 13, color: Colors.white))),
-      ],
     );
   }
 
   void _handleLogin() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future.delayed(const Duration(milliseconds: 1000));
     
     if (_emailController.text == mockEmail && _passwordController.text == mockPassword) {
       final prefs = await SharedPreferences.getInstance();
@@ -211,8 +205,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    if (widget.showInstallPrompt) 
-                      TextButton(onPressed: _showInstallPopup, child: const Text('How to install app?', style: TextStyle(color: AppTheme.primaryColor, decoration: TextDecoration.underline))),
+                    if (!isPWAInstalled()) 
+                      TextButton(onPressed: _showInstallPopup, child: const Text('Install App for Home Screen', style: TextStyle(color: AppTheme.primaryColor, decoration: TextDecoration.underline))),
                   ],
                 ),
               ),
