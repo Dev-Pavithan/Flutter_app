@@ -10,10 +10,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="WSTSC Attendance">
-  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="apple-touch-icon" href="logo.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="logo.png"/>
 
   <title>WSTSC Attendance</title>
   <link rel="manifest" href="manifest.json">
@@ -25,6 +25,50 @@
     .loader-text { margin-top: 16px; color: #6366f1; font-weight: bold; letter-spacing: 0.1em; font-size: 14px; opacity: 0.8; }
     @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
+
+  <script>
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      console.log('PWA: Prompt Captured');
+      // Dispatch event for Flutter to hear
+      window.dispatchEvent(new Event('pwa_prompt_ready'));
+    });
+
+    window.installPWA = async () => {
+      console.log('PWA: Install requested. deferredPrompt is:', !!deferredPrompt);
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA Outcome: ${outcome}`);
+        deferredPrompt = null;
+        return outcome === 'accepted';
+      }
+      return false;
+    };
+
+    window.isPWAInstalled = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      console.log('PWA: isInstalled check:', isStandalone);
+      return isStandalone;
+    };
+
+    window.isPWAPromptReady = () => {
+      return !!deferredPrompt;
+    };
+
+    // Manual SW registration for PWA readiness
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('flutter_service_worker.js?v=1').then(function(registration) {
+          console.log('SW: Registered successfully with scope:', registration.scope);
+        }, function(err) {
+          console.log('SW: Registration failed:', err);
+        });
+      });
+    }
+  </script>
 
   <script src="flutter_bootstrap.js" async></script>
 </head>
