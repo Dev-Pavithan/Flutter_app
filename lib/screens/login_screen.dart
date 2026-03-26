@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text('WSTSXAttendance', style: AppTheme.darkTheme.textTheme.displayLarge?.copyWith(fontSize: 40)),
+                    Text('WSTSCAttendance', style: AppTheme.darkTheme.textTheme.displayLarge?.copyWith(fontSize: 40)),
                     Text('WSTSC Student Management', style: AppTheme.darkTheme.textTheme.bodyLarge?.copyWith(color: Colors.white54)),
                     const SizedBox(height: 48),
                     Container(
