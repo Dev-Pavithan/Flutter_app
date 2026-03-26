@@ -8,3 +8,6 @@ external dynamic installPWA();
 
 @JS('isPWAInstalled')
 external bool isPWAInstalled();
+
+@JS('isPWAPromptReady')
+external bool isPWAPromptReady();

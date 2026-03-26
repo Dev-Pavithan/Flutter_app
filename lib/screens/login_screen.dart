@@ -25,13 +25,29 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Use the real PWA check from JS
+    _checkPWAStatus();
+  }
+
+  void _checkPWAStatus() async {
+    // Small delay to allow browser to evaluate PWA readiness
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) return;
+    
     if (!isPWAInstalled()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showInstallPopup());
+      _showInstallPopup();
     }
   }
 
   Future<void> _triggerPWAInstall() async {
+    if (!isPWAPromptReady()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Installation prompt not ready. Please wait a moment or check your browser settings.'),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
+      return;
+    }
     final result = await installPWA();
     if (result == true && mounted) {
       Navigator.pop(context); // Close popup
@@ -41,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showInstallPopup() {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
@@ -68,11 +84,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 minimumSize: const Size.fromHeight(56),
               ),
               child: const Text('Install Now', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Maybe Later', style: TextStyle(color: Colors.white38)),
             ),
           ],
         ),
@@ -205,8 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    if (!isPWAInstalled()) 
-                      TextButton(onPressed: _showInstallPopup, child: const Text('Install App for Home Screen', style: TextStyle(color: AppTheme.primaryColor, decoration: TextDecoration.underline))),
                   ],
                 ),
               ),
