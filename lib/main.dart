@@ -8,11 +8,13 @@ import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AttendanceApp());
+  final prefs = await SharedPreferences.getInstance();
+  runApp(AttendanceApp(prefs: prefs));
 }
 
 class AttendanceApp extends StatelessWidget {
-  const AttendanceApp({super.key});
+  final SharedPreferences prefs;
+  const AttendanceApp({super.key, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +22,14 @@ class AttendanceApp extends StatelessWidget {
       title: 'WSTSC Attendance',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const SplashGate(),
+      home: SplashGate(prefs: prefs),
     );
   }
 }
 
 class SplashGate extends StatefulWidget {
-  const SplashGate({super.key});
+  final SharedPreferences prefs;
+  const SplashGate({super.key, required this.prefs});
 
   @override
   State<SplashGate> createState() => _SplashGateState();
@@ -45,10 +48,10 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _checkStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final bool isLoggedIn = widget.prefs.getBool('isLoggedIn') ?? false;
     
-    await Future.delayed(const Duration(seconds: 1500)); // Smooth entry
+    // No artificial delay anymore, just enough for smooth transition
+    await Future.delayed(const Duration(milliseconds: 300)); 
 
     if (!mounted) return;
 
