@@ -43,7 +43,6 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: const CustomAppBar(),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SlideTransition(

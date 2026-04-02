@@ -6,6 +6,7 @@ import 'attendance_screen.dart';
 import 'class_list_screen.dart';
 import 'history_screen.dart';
 import 'summary_screen.dart';
+import '../widgets/custom_app_bar.dart';
 import '../mock_data.dart';
 
 class DashboardWrapper extends StatefulWidget {
@@ -30,6 +31,8 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
+      extendBody: true,
+      appBar: CustomAppBar(),
       body: IndexedStack(
         index: _selectedIndex,
         children: _screens,
@@ -37,8 +40,8 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
       bottomNavigationBar: Container(
         height: 100,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -89,11 +92,21 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 24 : 12, 
+                vertical: isSelected ? 14 : 8
+              ),
               decoration: isSelected 
                 ? BoxDecoration(
                     color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
                   )
                 : null,
               child: Column(

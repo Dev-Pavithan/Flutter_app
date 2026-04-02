@@ -12,7 +12,6 @@ class SummaryScreen extends StatelessWidget {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: const CustomAppBar(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

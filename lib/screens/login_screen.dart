@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
 import 'dashboard_wrapper.dart';
-
 import '../pwa_interop.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -74,10 +75,69 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleBiometric() {
-    // Simulate biometric check
-    _passcode = _correctPasscode;
-    _verifyPasscode();
+  Future<void> _handleBiometric() async {
+    final LocalAuthentication auth = LocalAuthentication();
+    
+    // Check if in browser but not PWA
+    bool isWebUninstalled = kIsWeb && !isPWAInstalled();
+
+    if (isWebUninstalled) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppTheme.darkSurface,
+            title: Text('Biometrics Unavailable', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
+            content: Text('Please install this app to your home screen to use biometric facial or fingerprint login.', style: GoogleFonts.inter(color: Colors.white70)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _triggerInstall();
+                },
+                child: const Text('Install Now'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context), 
+                child: Text('Cancel', style: TextStyle(color: Colors.white24)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final bool canAuthenticate = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+      
+      if (!canAuthenticate) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Biometrics not supported or setup on this device.'), behavior: SnackBarBehavior.floating),
+          );
+        }
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Please authenticate to sign in to Attendance Pro',
+      );
+
+      if (didAuthenticate) {
+        setState(() {
+          _passcode = _correctPasscode;
+        });
+        _verifyPasscode();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authentication error: $e'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 
   Future<void> _triggerInstall() async {
@@ -156,18 +216,32 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: Column(
               children: [
-                const Spacer(),
+                if (showBanner) const SizedBox(height: 130),
+                const Spacer(flex: 2),
                 Hero(
                   tag: 'app_logo',
                   child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
-                    child: Image.network(
-                      'logo.png',
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        'logo.png',
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
+                      ),
                     ),
                   ),
                 ),
@@ -185,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: List.generate(4, (index) => _buildDot(index < _passcode.length)),
                   ),
                 
-                const Spacer(),
+                const Spacer(flex: 3),
 
                 // Keypad
                 Container(

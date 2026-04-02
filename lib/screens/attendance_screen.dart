@@ -46,6 +46,65 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     });
   }
 
+  void _showFilterOptions() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Filter Students', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildFilterOption(LucideIcons.users, 'Show All', () => _applyFilter('all'), isDark),
+            _buildFilterOption(LucideIcons.checkCircle, 'Present Only', () => _applyFilter('present'), isDark, color: Colors.green),
+            _buildFilterOption(LucideIcons.xCircle, 'Absent Only', () => _applyFilter('absent'), isDark, color: Colors.red),
+            _buildFilterOption(LucideIcons.arrowUpAZ, 'Sort (A-Z)', () => _applyFilter('sort_name'), isDark),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOption(IconData icon, String label, VoidCallback onTap, bool isDark, {Color? color}) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: (color ?? (isDark ? AppTheme.darkAccent : AppTheme.lightAccent)).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color ?? (isDark ? AppTheme.darkAccent : AppTheme.lightAccent), size: 20),
+      ),
+      title: Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    );
+  }
+
+  void _applyFilter(String type) {
+    setState(() {
+      if (type == 'all') {
+        filteredStudents = List.from(students);
+      } else if (type == 'present') {
+        filteredStudents = students.where((s) => s.isPresent).toList();
+      } else if (type == 'absent') {
+        filteredStudents = students.where((s) => !s.isPresent).toList();
+      } else if (type == 'sort_name') {
+        filteredStudents.sort((a, b) => a.name.compareTo(b.name));
+      }
+    });
+    Navigator.pop(context);
+  }
+
   void _saveAttendance() async {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -115,7 +174,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     String displayDate = "Thursday, October 24th"; 
 
     return Scaffold(
-      appBar: const CustomAppBar(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,14 +221,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: isDark ? null : Border.all(color: Colors.grey.shade200),
+                  InkWell(
+                    onTap: _showFilterOptions,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkSurface : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: isDark ? null : Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Icon(LucideIcons.slidersHorizontal, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, size: 20),
                     ),
-                    child: Icon(LucideIcons.slidersHorizontal, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
                   ),
                 ],
               ),

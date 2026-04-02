@@ -23,7 +23,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: const CustomAppBar(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

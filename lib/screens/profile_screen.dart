@@ -35,11 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'My Profile', 
-        subtitle: 'Teacher Account Settings',
-        showLogo: true
-      ),
+      appBar: CustomAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
