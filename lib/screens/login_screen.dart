@@ -76,18 +76,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometric() async {
-    final LocalAuthentication auth = LocalAuthentication();
-    
-    // Check if biometrics are supported at all
-    bool canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
-
-    // Show our custom themed biometric scanning dialog
+    // Show our custom themed biometric scanning dialog immediately
     if (mounted) {
-      _showScanningDialog(canCheck, auth);
+      _showScanningDialog();
     }
   }
 
-  void _showScanningDialog(bool isSupported, LocalAuthentication auth) {
+  void _showScanningDialog() {
+    final LocalAuthentication auth = LocalAuthentication();
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -116,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Place your finger on the sensor',
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.inter(fontSize: 14, color: Colors.white54),
                     ),
                     const SizedBox(height: 48),
@@ -147,7 +144,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       onEnd: () async {
                         // After first animation cycle, try to authenticate
-                        if (isSupported && !kIsWeb) {
+                        bool canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+                        
+                        if (canCheck && !kIsWeb) {
                           try {
                             final didAuth = await auth.authenticate(
                               localizedReason: 'Authenticate to login',
@@ -158,10 +157,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               _verifyPasscode();
                             }
                           } catch (_) {
-                            // If native fails, we still allow simulation if it's a demo
+                            // If native fails on mobile, just let the scanning continue or notify
                           }
                         } else {
-                          // Simulate success for web/browser environment after a delay
+                          // Simulate success for web or demo environment after 1 second scan
                           await Future.delayed(const Duration(seconds: 1));
                           if (mounted) {
                             Navigator.pop(context);
