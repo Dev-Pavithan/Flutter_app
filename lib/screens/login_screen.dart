@@ -82,30 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isWebUninstalled = kIsWeb && !isPWAInstalled();
 
     if (isWebUninstalled) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppTheme.darkSurface,
-            title: Text('Biometrics Unavailable', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white)),
-            content: Text('Please install this app to your home screen to use biometric facial or fingerprint login.', style: GoogleFonts.inter(color: Colors.white70)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _triggerInstall();
-                },
-                child: const Text('Install Now'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context), 
-                child: Text('Cancel', style: TextStyle(color: Colors.white24)),
-              ),
-            ],
-          ),
-        );
-      }
+      setState(() => _hideInstallBanner = false);
       return;
     }
 
@@ -132,10 +109,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _verifyPasscode();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication error: $e'), behavior: SnackBarBehavior.floating),
-        );
+      // If we get MissingPluginException, it's likely web context needing install or full restart
+      if (e.toString().contains('MissingPluginException') && kIsWeb) {
+        setState(() => _hideInstallBanner = false);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Authentication error: $e'), behavior: SnackBarBehavior.floating),
+          );
+        }
       }
     }
   }
@@ -149,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool isDark = Theme.of(context).brightness == Brightness.dark;
     bool showBanner = widget.showInstallPrompt && !_hideInstallBanner;
 
     return Scaffold(
@@ -157,66 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         children: [
           _buildBackground(),
-          if (showBanner)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.darkAccent.withOpacity(0.9),
-                      const Color(0xFFC2912E),
-                    ],
-                  ),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(LucideIcons.downloadCloud, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Install WSTSC', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-                          Text('Add to home screen for a better experience', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _triggerInstall,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      child: const Text('Install', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    IconButton(
-                      icon: const Icon(LucideIcons.x, color: Colors.black54, size: 20),
-                      onPressed: () => setState(() => _hideInstallBanner = true),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           SafeArea(
             child: Column(
               children: [
-                if (showBanner) const SizedBox(height: 130),
                 const Spacer(flex: 2),
                 Hero(
                   tag: 'app_logo',
@@ -277,6 +201,69 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
+
+          // New Modal Themed Install UI
+          if (showBanner)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black87.withOpacity(0.8),
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkSurface,
+                      borderRadius: BorderRadius.circular(36),
+                      border: Border.all(color: AppTheme.darkAccent.withOpacity(0.2)),
+                      boxShadow: [
+                        BoxShadow(color: AppTheme.darkAccent.withOpacity(0.1), blurRadius: 40, spreadRadius: 0),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkAccent.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(LucideIcons.downloadCloud, color: AppTheme.darkAccent, size: 38),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Enhance Your Experience',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Install WSTSC on your home screen for quick access and biometric face login support.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 14, color: Colors.white60, height: 1.5),
+                        ),
+                        const SizedBox(height: 32),
+                        ElevatedButton(
+                          onPressed: _triggerInstall,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.darkAccent,
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size.fromHeight(60),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          child: const Text('Install Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => setState(() => _hideInstallBanner = true),
+                          child: Text('Maybe Later', style: GoogleFonts.inter(color: Colors.white38)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
