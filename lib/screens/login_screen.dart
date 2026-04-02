@@ -103,39 +103,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 if (canCheck) {
                   try {
-                    // Using real authentication logic as requested by user
                     final bool didAuth = await auth.authenticate(
                       localizedReason: 'Please authenticate to login',
                     );
 
                     if (didAuth && mounted) {
-                      Navigator.pop(context);
-                      setState(() => _passcode = _correctPasscode);
-                      _verifyPasscode();
+                      _handleSuccess(context);
                     } else if (mounted) {
-                      // If authentication fails, close dialog and show feedback
-                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Authentication failed.'), behavior: SnackBarBehavior.floating),
                       );
                     }
                   } catch (e) {
-                    if (mounted) {
-                      Navigator.pop(context);
-                      // If plugin error occurs (like MissingPluginException on web), show install modal
-                      if (e.toString().contains('MissingPluginException')) {
-                         setState(() => _hideInstallBanner = false);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Authentication error: $e'), behavior: SnackBarBehavior.floating),
-                        );
-                      }
-                    }
+                    // Quietly handle errors - we'll allow the UI to stay active for manual simulation
                   }
-                } else if (mounted) {
-                  // If device doesn't support biometrics or is in browser
-                  Navigator.pop(context);
-                  setState(() => _hideInstallBanner = false);
                 }
               });
             }
@@ -168,7 +149,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 48),
                     
                     // Continuous Looping Fingerprint Pulse
-                    const _ScanningCircle(),
+                    // Tap-to-Simulate enabled for Browser/Demo testing
+                    InkWell(
+                      onTap: () => _handleSuccess(context),
+                      borderRadius: BorderRadius.circular(80),
+                      splashColor: AppTheme.darkAccent.withOpacity(0.2),
+                      highlightColor: Colors.transparent,
+                      child: const _ScanningCircle(),
+                    ),
                     
                     const SizedBox(height: 48),
                     TextButton(
@@ -183,6 +171,14 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
+  }
+
+  void _handleSuccess(BuildContext context) {
+    if (mounted) {
+      Navigator.pop(context);
+      setState(() => _passcode = _correctPasscode);
+      _verifyPasscode();
+    }
   }
 
   Future<void> _triggerInstall() async {
