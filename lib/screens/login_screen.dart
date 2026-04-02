@@ -103,26 +103,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 if (canCheck) {
                   try {
-                    final didAuth = await auth.authenticate(
-                      localizedReason: 'Authenticate to login',
+                    // Using real authentication logic as requested by user
+                    final bool didAuth = await auth.authenticate(
+                      localizedReason: 'Please authenticate to login',
                     );
+
                     if (didAuth && mounted) {
                       Navigator.pop(context);
                       setState(() => _passcode = _correctPasscode);
                       _verifyPasscode();
-                      return;
+                    } else if (mounted) {
+                      // If authentication fails, close dialog and show feedback
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Authentication failed.'), behavior: SnackBarBehavior.floating),
+                      );
                     }
-                  } catch (_) {
-                    // Fallback to simulation if native fails or is missing
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.pop(context);
+                      // If plugin error occurs (like MissingPluginException on web), show install modal
+                      if (e.toString().contains('MissingPluginException')) {
+                         setState(() => _hideInstallBanner = false);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Authentication error: $e'), behavior: SnackBarBehavior.floating),
+                        );
+                      }
+                    }
                   }
-                }
-
-                // Simulate scanning success (especially for web/demo)
-                await Future.delayed(const Duration(seconds: 1));
-                if (mounted) {
+                } else if (mounted) {
+                  // If device doesn't support biometrics or is in browser
                   Navigator.pop(context);
-                  setState(() => _passcode = _correctPasscode);
-                  _verifyPasscode();
+                  setState(() => _hideInstallBanner = false);
                 }
               });
             }
