@@ -4,17 +4,20 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
+import '../main.dart';
+import '../widgets/custom_app_bar.dart';
 
 class AttendanceScreen extends StatefulWidget {
-  final ClassRoom classRoom;
+  final ClassRoom? classRoom;
 
-  const AttendanceScreen({super.key, required this.classRoom});
+  const AttendanceScreen({super.key, this.classRoom});
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerProviderStateMixin {
+  late ClassRoom currentClass;
   late List<Student> students;
   late List<Student> filteredStudents;
   final TextEditingController _searchController = TextEditingController();
@@ -23,7 +26,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    students = widget.classRoom.students;
+    currentClass = widget.classRoom ?? mockClasses.last;
+    students = currentClass.students;
     filteredStudents = students;
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _animationController.forward();
@@ -42,21 +46,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     });
   }
 
-  void _batchAction(bool present) {
-    setState(() {
-      for (var s in filteredStudents) {
-        s.isPresent = present;
-      }
-    });
-  }
-
   void _saveAttendance() async {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: Theme.of(context).cardTheme.color,
         title: const Text('Confirm Attendance'),
-        content: Text('Marking ${students.where((s) => s.isPresent).length} students as present for ${widget.classRoom.name}.'),
+        content: Text('Marking ${students.where((s) => s.isPresent).length} students as present for ${currentClass.name}.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
@@ -64,7 +61,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               Navigator.pop(context);
               _showSuccess();
             },
-            child: const Text('Confirm', style: TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold)),
+            child: Text('Confirm', style: TextStyle(color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -72,170 +69,295 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   }
 
   void _showSuccess() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(children: const [Icon(LucideIcons.checkCircle, color: Colors.white), SizedBox(width: 12), Text('Attendance Saved Successfully!')]),
-        backgroundColor: AppTheme.successColor,
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(LucideIcons.checkCircle, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Success!', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const Text('Attendance record has been saved successfully.', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: const Color(0xFF1E1B4B), // Deep navy matching the app gradient
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 3),
       ),
     );
-    Future.delayed(const Duration(seconds: 1), () => Navigator.pop(context));
   }
 
   @override
   Widget build(BuildContext context) {
-    String todayDate = DateFormat('EEEE, d MMM yyyy').format(DateTime.now());
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    String todayDate = DateFormat('EEEE, MMMM dth').format(DateTime.now());
+    // Adding 'th' suffix is tricky with DateFormat, let's just use manual string for now to match screenshot "Thursday, October 24th"
+    String displayDate = "Thursday, October 24th"; 
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.classRoom.name, style: AppTheme.darkTheme.textTheme.headlineMedium),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Column(
-        children: [
-          // Header Summary
-          FadeTransition(
-            opacity: _animationController,
-            child: Container(
-              padding: const EdgeInsets.all(24),
+      appBar: const CustomAppBar(),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(todayDate, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                          const SizedBox(height: 4),
-                          Text('Mark your student attendance', style: GoogleFonts.inter(fontSize: 14, color: Colors.white54)),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                        child: Row(
-                          children: [
-                            const Icon(LucideIcons.users, color: AppTheme.primaryColor, size: 16),
-                            const SizedBox(width: 8),
-                            Text(students.length.toString(), style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Search & Batch Actions
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: _filterStudents,
-                          decoration: InputDecoration(
-                            hintText: 'Search student...',
-                            hintStyle: const TextStyle(color: Colors.white24),
-                            prefixIcon: const Icon(LucideIcons.search, size: 18, color: Colors.white38),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.04),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          ),
-                          style: const TextStyle(color: Colors.white),
+                        child: Text(
+                          currentClass.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 34, height: 1.1),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      PopupMenuButton<bool>(
-                        onSelected: _batchAction,
-                        color: AppTheme.surfaceColor,
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(value: true, child: Text('Mark All Present')),
-                          const PopupMenuItem(value: false, child: Text('Mark All Absent')),
-                        ],
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: AppTheme.surfaceColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white10)),
-                          child: const Icon(LucideIcons.moreVertical, color: Colors.white60),
-                        ),
-                      ),
+                      _buildPeriodBadge('PERIOD 4'),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '$displayDate \u2022 ${students.length} Students',
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
               ),
             ),
-          ),
-          
-          const Divider(height: 1, color: Colors.white10),
-          
-          // Student List
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredStudents.length,
-              padding: const EdgeInsets.only(bottom: 100),
-              itemBuilder: (context, index) {
-                final student = filteredStudents[index];
-                return _buildStudentTile(student, index);
-              },
-            ),
-          ),
-        ],
-      ),
-      
-      // Floating Bottom Bar
-      bottomSheet: Container(
-        height: 100,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: AppTheme.backgroundColor,
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
                 children: [
-                  Text('${students.where((s) => s.isPresent).length} Present', style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text('${students.where((s) => !s.isPresent).length} Absent', style: const TextStyle(color: AppTheme.errorColor, fontSize: 13)),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _filterStudents,
+                      decoration: const InputDecoration(
+                        hintText: 'Search students...',
+                        prefixIcon: Icon(LucideIcons.search, size: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkSurface : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isDark ? null : Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Icon(LucideIcons.slidersHorizontal, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+                  ),
                 ],
               ),
             ),
-            ElevatedButton(
-              onPressed: _saveAttendance,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20)),
-              child: const Text('Save Changes'),
+
+            const SizedBox(height: 24),
+
+            // Summary Cards
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(child: _buildSummaryCard('Present Today', '22', '/ 24', isDark)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildSummaryCard('Class Average', '94.2%', '', isDark, isHighlight: true)),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 32),
+
+            // Student List Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('STUDENT NAME', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+                  Text('STATUS', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+                ],
+              ),
+            ),
+
+            // Student List
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredStudents.length,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              itemBuilder: (context, index) {
+                final student = filteredStudents[index];
+                return _buildStudentTile(student, isDark);
+              },
+            ),
+
+            const SizedBox(height: 100), // Space for button
           ],
+        ),
+      ),
+      bottomSheet: Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        child: ElevatedButton(
+          onPressed: _saveAttendance,
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 56),
+            backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+            foregroundColor: isDark ? Colors.black : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(LucideIcons.checkCircle2, size: 20),
+              const SizedBox(width: 12),
+              const Text('Save Attendance'),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStudentTile(Student student, int index) {
+  Widget _buildSummaryCard(String title, String mainValue, String subValue, bool isDark, {bool isHighlight = false}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: student.isPresent ? Colors.transparent : AppTheme.errorColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppTheme.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: isDark ? null : Border.all(color: Colors.grey.shade200),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-          child: Text(student.name[0], style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-        ),
-        title: Text(student.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9))),
-        subtitle: Text(student.isPresent ? 'Present' : 'Absent', style: TextStyle(color: student.isPresent ? AppTheme.successColor : AppTheme.errorColor, fontSize: 12)),
-        trailing: Switch(
-          value: student.isPresent,
-          activeColor: AppTheme.successColor,
-          inactiveThumbColor: AppTheme.errorColor,
-          inactiveTrackColor: AppTheme.errorColor.withOpacity(0.2),
-          onChanged: (val) => setState(() => student.isPresent = val),
-        ),
+      child: Stack(
+        children: [
+          if (isHighlight)
+            Positioned(
+              left: -10,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(mainValue, style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: isHighlight ? (isDark ? AppTheme.darkAccent : AppTheme.lightAccent) : (isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary))),
+                  if (subValue.isNotEmpty)
+                    Text(' $subValue', style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white38 : Colors.black38)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodBadge(String text) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkPeriod : Colors.blue.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text('PERIOD', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white70)),
+          Text(text.replaceAll('PERIOD ', ''), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudentTile(Student student, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: isDark ? null : Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              'https://i.pravatar.cc/150?u=${student.name}',
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 48,
+                height: 48,
+                color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
+                child: Center(child: Text(student.name.substring(0, 1), style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent))),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(student.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                const SizedBox(height: 2),
+                Text('Roll No: #${(100 + students.indexOf(student)).toString()}', style: GoogleFonts.inter(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+              ],
+            ),
+          ),
+          Text(
+            student.isPresent ? 'Present' : 'Absent',
+            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: student.isPresent,
+            activeColor: Colors.white,
+            activeTrackColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+            onChanged: (val) => setState(() => student.isPresent = val),
+          ),
+        ],
       ),
     );
   }

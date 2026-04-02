@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
+import '../main.dart';
+import '../widgets/custom_app_bar.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -13,107 +15,88 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  DateTime selectedDate = DateTime.now().subtract(const Duration(days: 1));
-  late List<AttendanceHistory> filteredHistory;
+  DateTime selectedDate = DateTime.now();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _filterByDate(selectedDate);
-  }
+  Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-  void _filterByDate(DateTime date) {
-    setState(() {
-      selectedDate = date;
-      filteredHistory = mockHistory.where((h) => 
-        h.date.year == date.year && 
-        h.date.month == date.month && 
-        h.date.day == date.day
-      ).toList();
-    });
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: AppTheme.darkTheme.copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppTheme.primaryColor,
-              onPrimary: Colors.white,
-              surface: AppTheme.surfaceColor,
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != selectedDate) {
-      _filterByDate(picked);
-    }
-  }
-
-  void _showHistoryDetails(AttendanceHistory history, ClassRoom classObj) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: AppTheme.backgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+    return Scaffold(
+      appBar: const CustomAppBar(),
+      body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 24),
+            // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(classObj.name, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                      Text(DateFormat('EEE, d MMM yyyy').format(history.date), style: GoogleFonts.inter(color: Colors.white38)),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                    child: Text('${((history.presentCount / history.totalCount) * 100).toInt()}%', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                  ),
+                  Text('Attendance History', style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 32)),
+                  const SizedBox(height: 8),
+                  Text('Review and manage past student\nattendance records.', style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: DefaultTabController(
-                length: 2,
+
+            // Date Selection Card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: isDark ? null : Border.all(color: Colors.grey.shade100),
+                ),
                 child: Column(
                   children: [
-                    TabBar(
-                      indicatorColor: AppTheme.primaryColor,
-                      labelColor: AppTheme.primaryColor,
-                      unselectedLabelColor: Colors.white38,
-                      tabs: [
-                        Tab(text: 'Present (${history.presentCount})'),
-                        Tab(text: 'Absent (${history.absentStudentNames.length})'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Select Date', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                        Text('OCTOBER 2023', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent)),
                       ],
                     ),
-                    Expanded(
-                      child: TabBarView(
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildDateItem('MON', '23', false, isDark),
+                        _buildDateItem('TUE', '24', true, isDark),
+                        _buildDateItem('WED', '25', false, isDark),
+                        _buildDateItem('THU', '26', false, isDark),
+                        _buildDateItem('FRI', '27', false, isDark),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    OutlinedButton(
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null && picked != selectedDate) {
+                          setState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildStudentList(history.presentStudentNames, AppTheme.successColor, LucideIcons.userCheck),
-                          _buildStudentList(history.absentStudentNames, AppTheme.errorColor, LucideIcons.userMinus),
+                          Icon(LucideIcons.calendar, size: 18, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
+                          const SizedBox(width: 12),
+                          Text('Open Full Calendar', style: TextStyle(color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
                         ],
                       ),
                     ),
@@ -121,175 +104,228 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 24),
+
+            // Daily Summary Card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: isDark ? null : Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Daily Summary', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 80,
+                              height: 80,
+                              child: CircularProgressIndicator(
+                                value: 0.9,
+                                strokeWidth: 10,
+                                backgroundColor: isDark ? Colors.white12 : Colors.grey.shade100,
+                                color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                                strokeCap: StrokeCap.round,
+                              ),
+                            ),
+                            Text('90%', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                          ],
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('95% Present', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                              Text('Target: 98%', style: GoogleFonts.inter(fontSize: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(child: _buildCountBox('38', 'PRESENT', isDark)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildCountBox('02', 'ABSENT', isDark, isAlert: true)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Student Records List Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Student\nRecords',
+                      style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Search name...',
+                        prefixIcon: Icon(LucideIcons.search, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Student Records List
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 4, // Example count from screenshot
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemBuilder: (context, index) {
+                final List<Map<String, dynamic>> students = [
+                  {'name': 'Alex Rivera', 'id': 'ST-88219', 'status': 'PRESENT'},
+                  {'name': 'Maya Jenkins', 'id': 'ST-88402', 'status': 'ABSENT'},
+                  {'name': 'Elena Petrova', 'id': 'ST-88115', 'status': 'PRESENT'},
+                  {'name': 'Marcus Wong', 'id': 'ST-88901', 'status': 'LATE'},
+                ];
+                final student = students[index];
+                return _buildRecordTile(student, isDark);
+              },
+            ),
+
+            const SizedBox(height: 48),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStudentList(List<String> names, Color color, IconData icon) {
-    if (names.isEmpty) {
-      return Center(child: Text('No students listed', style: TextStyle(color: Colors.white24)));
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.all(24),
-      itemCount: names.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.white10),
-      itemBuilder: (context, index) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: CircleAvatar(
-          radius: 18,
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        title: Text(names[index], style: GoogleFonts.inter(color: Colors.white.withOpacity(0.9))),
+  Widget _buildDateItem(String day, String date, bool isSelected, bool isDark) {
+    return Container(
+      width: 58,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: isSelected 
+          ? (isDark ? AppTheme.darkAccent : AppTheme.lightAccent) 
+          : (isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isSelected ? [BoxShadow(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
+      ),
+      child: Column(
+        children: [
+          Text(day, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: isSelected ? Colors.black87 : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary))),
+          const SizedBox(height: 8),
+          Text(date, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: isSelected ? Colors.black : (isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary))),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    String formattedDate = DateFormat('EEE, d MMM yyyy').format(selectedDate);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('History', style: AppTheme.darkTheme.textTheme.headlineMedium),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+  Widget _buildCountBox(String count, String label, bool isDark, {bool isAlert = false}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(20),
       ),
-      body: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date Selector Strip
-          GestureDetector(
-            onTap: () => _selectDate(context),
-            child: Container(
-              margin: const EdgeInsets.all(24),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.calendar, color: AppTheme.primaryColor),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Viewing Date', style: GoogleFonts.inter(fontSize: 12, color: Colors.white38)),
-                        Text(formattedDate, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                  const Icon(LucideIcons.chevronDown, color: AppTheme.primaryColor, size: 20),
-                ],
+          Text(count, style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: isAlert ? (isDark ? Color(0xFFEF4444) : Colors.red) : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent))),
+          const SizedBox(height: 4),
+          Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordTile(Map<String, dynamic> student, bool isDark) {
+    Color statusColor;
+    if (student['status'] == 'PRESENT') {
+      statusColor = isDark ? Color(0xFF10B981).withOpacity(0.2) : Colors.green.shade100;
+    } else if (student['status'] == 'ABSENT') {
+      statusColor = isDark ? Color(0xFFEF4444).withOpacity(0.2) : Colors.red.shade100;
+    } else {
+      statusColor = isDark ? Color(0xFF3F4FA7).withOpacity(0.2) : Colors.indigo.shade100;
+    }
+
+    Color textStatusColor;
+    if (student['status'] == 'PRESENT') {
+      textStatusColor = isDark ? Color(0xFF10B981) : Colors.green.shade700;
+    } else if (student['status'] == 'ABSENT') {
+      textStatusColor = isDark ? Color(0xFFEF4444) : Colors.red.shade700;
+    } else {
+      textStatusColor = isDark ? Color(0xFF7C8DFF) : Colors.indigo.shade700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              'https://i.pravatar.cc/150?u=${student['name']}',
+              width: 54,
+              height: 54,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 54,
+                height: 54,
+                color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
+                child: Center(child: Text(student['name'].substring(0, 1), style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent))),
               ),
             ),
           ),
-          
-          const Divider(height: 1, color: Colors.white10),
-          
+          const SizedBox(width: 16),
           Expanded(
-            child: filteredHistory.isEmpty 
-              ? _buildEmptyState()
-              : ListView.separated(
-                  itemCount: filteredHistory.length,
-                  padding: const EdgeInsets.all(24),
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final historyItem = filteredHistory[index];
-                    final classObj = mockClasses.firstWhere((c) => c.id == historyItem.classId);
-                    return InkWell(
-                      onTap: () => _showHistoryDetails(historyItem, classObj),
-                      borderRadius: BorderRadius.circular(24),
-                      child: _buildHistoryCard(historyItem, classObj),
-                    );
-                  },
-                ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(student['name'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
+                const SizedBox(height: 4),
+                Text('ID: #${student['id']}', style: GoogleFonts.inter(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+              ],
+            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(LucideIcons.fileSearch, size: 64, color: Colors.white.withOpacity(0.1)),
-          const SizedBox(height: 24),
-          Text('No records found for this date', style: GoogleFonts.inter(color: Colors.white38, fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryCard(AttendanceHistory item, ClassRoom classObj) {
-    double percentage = (item.presentCount / item.totalCount) * 100;
-    
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(LucideIcons.clock, color: AppTheme.primaryColor, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(classObj.name, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                    Text(classObj.teacherName, style: GoogleFonts.inter(fontSize: 13, color: Colors.white38)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('${percentage.toInt()}%', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const Text('Attendance', style: TextStyle(fontSize: 10, color: Colors.white38)),
-                ],
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              student['status'],
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: textStatusColor),
+            ),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _buildCompactBadge(LucideIcons.userCheck, '${item.presentCount} Present', AppTheme.successColor),
-              const SizedBox(width: 12),
-              _buildCompactBadge(LucideIcons.userMinus, '${item.absentStudentNames.length} Absent', AppTheme.errorColor),
-            ],
+          IconButton(
+            onPressed: () {},
+            icon: Icon(LucideIcons.moreVertical, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary, size: 20),
           ),
-          const SizedBox(height: 12),
-          Text('Tap to view student details', style: TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactBadge(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 11)),
         ],
       ),
     );

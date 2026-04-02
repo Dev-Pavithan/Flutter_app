@@ -47,9 +47,17 @@ final mockClasses = [
   ),
   ClassRoom(
     id: 'c5',
-    name: 'Grade 10B',
+    name: 'Grade 10 - Biology',
     teacherName: 'Mrs. Taylor',
-    students: List.generate(28, (index) => Student(id: 's${index + 98}', name: 'Student ${index + 1}')),
+    students: [
+      Student(id: 's101', name: 'Marcus Chen'),
+      Student(id: 's102', name: 'Sarah Miller'),
+      Student(id: 's103', name: 'Alex Rivera'),
+      Student(id: 's104', name: 'Maya Jenkins'),
+      Student(id: 's105', name: 'Elena Petrova'),
+      Student(id: 's106', name: 'Marcus Wong'),
+      ...List.generate(18, (index) => Student(id: 's${index + 107}', name: 'Student ${index + 1}')),
+    ],
   ),
 ];
 

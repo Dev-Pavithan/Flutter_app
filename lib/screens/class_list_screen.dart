@@ -7,6 +7,7 @@ import '../app_theme.dart';
 import '../mock_data.dart';
 import 'attendance_screen.dart';
 import 'login_screen.dart';
+import '../widgets/custom_app_bar.dart';
 
 class ClassListScreen extends StatefulWidget {
   const ClassListScreen({super.key});
@@ -37,65 +38,17 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
     super.dispose();
   }
 
-  void _handleLogout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('isLoggedIn', false);
-              if (mounted) {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-              }
-            },
-            child: const Text('Logout', style: TextStyle(color: AppTheme.errorColor)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Dashboard', style: AppTheme.darkTheme.textTheme.headlineMedium),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leadingWidth: 70,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Hero(
-            tag: 'app_logo',
-            child: Icon(LucideIcons.school, color: AppTheme.primaryColor, size: 32),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.refreshCw, color: Colors.white70, size: 20),
-            onPressed: () => html.window.location.reload(),
-            tooltip: 'Refresh App',
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.logOut, color: Colors.white70),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: const CustomAppBar(),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SlideTransition(
           position: _slideAnimation,
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -105,11 +58,11 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
                 // Greeting
                 Text(
                   'Hello, Teacher 👋',
-                  style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                 ),
                 Text(
                   'Classes for today',
-                  style: GoogleFonts.inter(fontSize: 16, color: Colors.white38),
+                  style: GoogleFonts.inter(fontSize: 16, color: isDark ? Colors.white38 : Colors.black45),
                 ),
                 const SizedBox(height: 24),
                 
@@ -118,38 +71,67 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.primaryColor.withOpacity(0.4), AppTheme.backgroundColor],
+                      colors: [
+                        (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.4), 
+                        isDark ? AppTheme.darkBg : Colors.white,
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+                    border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatItem('Total', mockClasses.length.toString()),
-                      _buildStatItem('Active', '2'),
-                      _buildStatItem('Avg %', '94%'),
+                      _buildStatItem('Total Students', '38', isDark),
+                      _buildStatItem('Active Class', '1', isDark),
+                      _buildStatItem('Avg %', '94%', isDark),
                     ],
                   ),
                 ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: 48),
+
+                // Quick Actions section
                 Text(
-                  'My Classrooms',
-                  style: AppTheme.darkTheme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 20),
+                  'Quick Actions',
+                  style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                 ),
                 const SizedBox(height: 16),
                 
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: mockClasses.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final classItem = mockClasses[index];
-                      return _buildClassCard(context, classItem, index);
-                    },
-                  ),
+                _buildActionCard(
+                  'Record Attendance',
+                  'Start marking students for today',
+                  LucideIcons.userCheck,
+                  isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                  isDark,
+                  () {
+                    // Navigate to students tab or attendance
+                  },
                 ),
+                const SizedBox(height: 16),
+                _buildActionCard(
+                  'View History',
+                  'Check past records and trends',
+                  LucideIcons.calendar,
+                  const Color(0xFF8B5CF6),
+                  isDark,
+                  () {
+                    // Navigate to history tab
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildActionCard(
+                  'Class Summary',
+                  'Detailed performance analytics',
+                  LucideIcons.barChart3,
+                  const Color(0xFFF59E0B),
+                  isDark,
+                  () {
+                    // Navigate to summary tab
+                  },
+                ),
+
+                const SizedBox(height: 48),
               ],
             ),
           ),
@@ -158,38 +140,26 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(String label, String value, bool isDark) {
     return Column(
       children: [
-        Text(value, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, color: Colors.white54)),
+        Text(value, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+        Text(label, style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white54 : Colors.black45)),
       ],
     );
   }
 
-  Widget _buildClassCard(BuildContext context, ClassRoom classItem, int index) {
+  Widget _buildActionCard(String title, String subtitle, IconData icon, Color color, bool isDark, VoidCallback onTap) {
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => AttendanceScreen(classRoom: classItem),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(animation),
-                child: child,
-              );
-            },
-          ),
-        );
-      },
+      onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
+          color: isDark ? AppTheme.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: isDark ? null : Border.all(color: Colors.grey.shade100),
+          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
@@ -197,23 +167,23 @@ class _ClassListScreenState extends State<ClassListScreen> with SingleTickerProv
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(LucideIcons.layout, color: AppTheme.primaryColor),
+              child: Icon(icon, color: color),
             ),
             const SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(classItem.name, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(title, style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                   const SizedBox(height: 4),
-                  Text('${classItem.students.length} Students • ${classItem.teacherName}', style: GoogleFonts.inter(fontSize: 13, color: Colors.white54)),
+                  Text(subtitle, style: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white38 : Colors.black45)),
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronRight, color: Colors.white24),
+            Icon(LucideIcons.chevronRight, color: isDark ? Colors.white24 : Colors.grey.shade300, size: 20),
           ],
         ),
       ),
