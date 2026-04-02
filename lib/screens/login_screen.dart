@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text('Scan to Login', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('Verify & Continue', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 8),
                 Text('Enter your 4-digit security PIN', style: GoogleFonts.inter(color: Colors.white54)),
                 const SizedBox(height: 48),
