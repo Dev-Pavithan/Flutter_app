@@ -80,8 +80,10 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
 
     return GestureDetector(
       onTap: () => setState(() => _selectedIndex = index),
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: isSelected 
           ? BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(16))

@@ -6,6 +6,8 @@ import '../app_theme.dart';
 import '../mock_data.dart';
 import 'dashboard_wrapper.dart';
 
+import '../pwa_interop.dart';
+
 class LoginScreen extends StatefulWidget {
   final bool showInstallPrompt;
 
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _passcode = "";
   bool _isLoading = false;
   final String _correctPasscode = "1234";
+  bool _hideInstallBanner = false;
 
   void _handleKeyPress(String key) {
     if (_passcode.length < 4) {
@@ -77,15 +80,79 @@ class _LoginScreenState extends State<LoginScreen> {
     _verifyPasscode();
   }
 
+  Future<void> _triggerInstall() async {
+    final result = await installPWA();
+    if (result == true) {
+      setState(() => _hideInstallBanner = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
+    bool showBanner = widget.showInstallPrompt && !_hideInstallBanner;
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: Stack(
         children: [
           _buildBackground(),
+          if (showBanner)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.darkAccent.withOpacity(0.9),
+                      const Color(0xFFC2912E),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(LucideIcons.downloadCloud, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Install WSTSC', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                          Text('Add to home screen for a better experience', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _triggerInstall,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text('Install', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    IconButton(
+                      icon: const Icon(LucideIcons.x, color: Colors.black54, size: 20),
+                      onPressed: () => setState(() => _hideInstallBanner = true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           SafeArea(
             child: Column(
               children: [
