@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 48),
                     
                     // Continuous Looping Fingerprint Pulse
-                    _ScanningCircle(),
+                    const _ScanningCircle(),
                     
                     const SizedBox(height: 48),
                     TextButton(
@@ -163,58 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
           },
-        );
-      },
-    );
-  }
-}
-
-class _ScanningCircle extends StatefulWidget {
-  @override
-  State<_ScanningCircle> createState() => _ScanningCircleState();
-}
-
-class _ScanningCircleState extends State<_ScanningCircle> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        double value = 0.8 + (_controller.value * 0.4);
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.darkAccent.withOpacity(0.3 * (2 - value))),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.darkAccent.withOpacity(0.1 * (2 - value)),
-                blurRadius: 20 * value,
-                spreadRadius: 5 * value,
-              )
-            ],
-          ),
-          child: Transform.scale(
-            scale: value,
-            child: const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 64),
-          ),
         );
       },
     );
@@ -433,4 +381,57 @@ class _ScanningCircleState extends State<_ScanningCircle> with SingleTickerProvi
       ),
     ),
   );
+}
+
+class _ScanningCircle extends StatefulWidget {
+  const _ScanningCircle();
+  @override
+  State<_ScanningCircle> createState() => _ScanningCircleState();
+}
+
+class _ScanningCircleState extends State<_ScanningCircle> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        double value = 0.8 + (_controller.value * 0.4);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppTheme.darkAccent.withOpacity(0.3 * (2 - value))),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.darkAccent.withOpacity(0.1 * (2 - value)),
+                blurRadius: 20 * value,
+                spreadRadius: 5 * value,
+              )
+            ],
+          ),
+          child: Transform.scale(
+            scale: value,
+            child: const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 64),
+          ),
+        );
+      },
+    );
+  }
 }
