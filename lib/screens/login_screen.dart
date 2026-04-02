@@ -94,8 +94,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   tag: 'app_logo',
                   child: Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: AppTheme.darkAccent.withOpacity(0.1), shape: BoxShape.circle),
-                    child: const Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
+                    child: Image.network(
+                      'logo.png',
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

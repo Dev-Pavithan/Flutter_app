@@ -144,7 +144,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
-      leadingWidth: 140,
+      leadingWidth: 180,
       leading: showLogo
           ? Padding(
               padding: const EdgeInsets.only(left: 20),
@@ -165,7 +165,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                         color: isDark ? AppTheme.darkAccent.withOpacity(0.1) : AppTheme.lightAccent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(LucideIcons.wind, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, size: 20),
+                      child: Image.network(
+                        'logo.png',
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          LucideIcons.school, 
+                          color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, 
+                          size: 20
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Text(

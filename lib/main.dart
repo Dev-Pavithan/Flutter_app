@@ -102,10 +102,16 @@ class _SplashGateState extends State<SplashGate> {
                   color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1), 
                   shape: BoxShape.circle
                 ),
-                child: Icon(
-                  Icons.wind_power_rounded, // Using similar icon to logo
-                  size: 80, 
-                  color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
+                child: Image.network(
+                  'logo.png',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.school_rounded,
+                    size: 80, 
+                    color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
+                  ),
                 ),
               ),
             ),
