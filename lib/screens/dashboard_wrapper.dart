@@ -76,27 +76,52 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
 
   Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
     bool isSelected = _selectedIndex == index;
-    Color accentColor = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedIndex = index),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+      child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: isSelected 
-          ? BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(16))
-          : null,
+        color: Colors.transparent, // Ensure hit testing works on the whole area
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: isSelected ? (isDark ? Colors.black : Colors.white) : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
-            const SizedBox(height: 4),
-            Text(label, 
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: isSelected ? (isDark ? Colors.black : Colors.white) : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary))),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: isSelected 
+                ? BoxDecoration(
+                    color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                    borderRadius: BorderRadius.circular(20),
+                  )
+                : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon, 
+                    size: 20, 
+                    color: isSelected 
+                      ? (isDark ? Colors.black : Colors.white) 
+                      : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label, 
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 9, 
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700, 
+                      color: isSelected 
+                        ? (isDark ? Colors.black : Colors.white) 
+                        : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)
+                    )
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

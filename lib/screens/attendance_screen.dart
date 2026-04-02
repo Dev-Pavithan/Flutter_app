@@ -136,8 +136,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                           style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 34, height: 1.1),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      _buildPeriodBadge('PERIOD 4'),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -287,23 +285,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodBadge(String text) {
-    bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkPeriod : Colors.blue.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Text('PERIOD', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white70)),
-          Text(text.replaceAll('PERIOD ', ''), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ],
       ),
     );
