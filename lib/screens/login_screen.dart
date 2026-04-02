@@ -84,12 +84,45 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showScanningDialog() {
     final LocalAuthentication auth = LocalAuthentication();
+    bool isAuthenticating = false;
+
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            // Trigger authentication once the dialog is ready
+            if (!isAuthenticating) {
+              isAuthenticating = true;
+              Future.delayed(const Duration(milliseconds: 500), () async {
+                bool canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+                
+                if (canCheck && !kIsWeb) {
+                  try {
+                    final didAuth = await auth.authenticate(
+                      localizedReason: 'Authenticate to login',
+                    );
+                    if (didAuth && mounted) {
+                      Navigator.pop(context);
+                      setState(() => _passcode = _correctPasscode);
+                      _verifyPasscode();
+                    }
+                  } catch (_) {
+                    setDialogState(() => isAuthenticating = false);
+                  }
+                } else {
+                  // Simulate success for web/demo after 2 seconds total
+                  await Future.delayed(const Duration(seconds: 2));
+                  if (mounted) {
+                    Navigator.pop(context);
+                    setState(() => _passcode = _correctPasscode);
+                    _verifyPasscode();
+                  }
+                }
+              });
+            }
+
             return Dialog(
               backgroundColor: Colors.transparent,
               child: Container(
@@ -117,59 +150,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 48),
                     
-                    // Animated Fingerprint Pulse
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.8, end: 1.2),
-                      duration: const Duration(seconds: 1),
-                      curve: Curves.easeInOutSine,
-                      builder: (context, value, child) {
-                        return Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.darkAccent.withOpacity(0.3 * (2 - value))),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.darkAccent.withOpacity(0.1 * (2 - value)),
-                                blurRadius: 20 * value,
-                                spreadRadius: 5 * value,
-                              )
-                            ],
-                          ),
-                          child: Transform.scale(
-                            scale: value,
-                            child: const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 64),
-                          ),
-                        );
-                      },
-                      onEnd: () async {
-                        // After first animation cycle, try to authenticate
-                        bool canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
-                        
-                        if (canCheck && !kIsWeb) {
-                          try {
-                            final didAuth = await auth.authenticate(
-                              localizedReason: 'Authenticate to login',
-                            );
-                            if (didAuth && mounted) {
-                              Navigator.pop(context);
-                              setState(() => _passcode = _correctPasscode);
-                              _verifyPasscode();
-                            }
-                          } catch (_) {
-                            // If native fails on mobile, just let the scanning continue or notify
-                          }
-                        } else {
-                          // Simulate success for web or demo environment after 1 second scan
-                          await Future.delayed(const Duration(seconds: 1));
-                          if (mounted) {
-                            Navigator.pop(context);
-                            setState(() => _passcode = _correctPasscode);
-                            _verifyPasscode();
-                          }
-                        }
-                      },
-                    ),
+                    // Continuous Looping Fingerprint Pulse
+                    _ScanningCircle(),
                     
                     const SizedBox(height: 48),
                     TextButton(
@@ -181,6 +163,58 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _ScanningCircle extends StatefulWidget {
+  @override
+  State<_ScanningCircle> createState() => _ScanningCircleState();
+}
+
+class _ScanningCircleState extends State<_ScanningCircle> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        double value = 0.8 + (_controller.value * 0.4);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppTheme.darkAccent.withOpacity(0.3 * (2 - value))),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.darkAccent.withOpacity(0.1 * (2 - value)),
+                blurRadius: 20 * value,
+                spreadRadius: 5 * value,
+              )
+            ],
+          ),
+          child: Transform.scale(
+            scale: value,
+            child: const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 64),
+          ),
         );
       },
     );
