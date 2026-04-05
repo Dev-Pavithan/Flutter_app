@@ -11,8 +11,11 @@ class BiometricService {
       final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
       final bool isDeviceSupported = await _auth.isDeviceSupported();
       return canAuthenticateWithBiometrics && isDeviceSupported;
-    } on PlatformException catch (e) {
-      print('Biometric Error: $e');
+    } catch (e) {
+      debugPrint('Biometric Availability error: $e');
+      if (e.toString().contains('MissingPluginException')) {
+        debugPrint('TECHNICAL NOTE: LocalAuth plugin not yet registered. Restarting the build is required.');
+      }
       return false;
     }
   }
@@ -22,8 +25,8 @@ class BiometricService {
       return await _auth.authenticate(
         localizedReason: 'Please authenticate to access WSTSC',
       );
-    } on PlatformException catch (e) {
-      print('Authentication Error: $e');
+    } catch (e) {
+      debugPrint('Authentication Error: $e');
       return false;
     }
   }
