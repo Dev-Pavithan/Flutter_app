@@ -163,6 +163,7 @@
   <script>
     let deferredPrompt;
     let installInProgress = false;
+    let isInstalled = false;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -174,6 +175,7 @@
     window.addEventListener('appinstalled', (event) => {
       console.log('PWA: Installed Successfully');
       installInProgress = false;
+      isInstalled = true;
       
       const btn = document.querySelector('.btn-install');
       const status = document.querySelector('.progress-status');
@@ -187,19 +189,15 @@
         btn.disabled = false;
         btn.innerText = 'Open WSTSC';
         btn.onclick = () => {
-          // Attempt a direct launch via temporary hidden link
-          // This often triggers the OS search for standalone PWA for the URL
           const link = document.createElement('a');
           link.href = window.location.origin + window.location.pathname;
           link.target = '_blank';
           link.click();
-          
-          // And reload the current tab (which will shift to standalone check if it works)
           setTimeout(() => { window.location.reload(); }, 100);
         };
       }
       
-      // Attempt auto-launch / reload periodically to see if standalone mode is picked up
+      // Standalone detection and reload
       const launchCheck = setInterval(() => {
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
           clearInterval(launchCheck);
@@ -220,7 +218,7 @@
     async function handleInstallClick() {
       const btn = document.querySelector('.btn-install');
       
-      if (btn.innerText.includes('Open')) {
+      if (isInstalled || btn.innerText.includes('Open')) {
         const link = document.createElement('a');
         link.href = window.location.origin + window.location.pathname;
         link.click();
@@ -244,7 +242,7 @@
             p += Math.random() * 4; 
             if (p >= 99) {
               p = 99;
-              if (!installInProgress) { // If appinstalled event fired
+              if (isInstalled) { // If appinstalled event fired
                 clearInterval(interval);
               }
             } else {
@@ -278,6 +276,13 @@
       if (shouldForce) {
         overlay.classList.add('show');
         
+        // IF ALREADY INSTALLED, DON'T ALLOW REVERTING TO "INSTALL NOW"
+        if (isInstalled) {
+            btn.disabled = false;
+            btn.innerText = 'Open WSTSC';
+            return;
+        }
+
         if (installInProgress || btn.innerText === 'Installing...') {
             return;
         }
