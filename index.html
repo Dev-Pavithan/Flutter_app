@@ -163,6 +163,7 @@
   <script>
     let deferredPrompt;
     let installInProgress = false;
+    let overlayHiddenManually = false;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -181,24 +182,23 @@
       const description = document.querySelector('.install-card p');
       
       if (status) status.innerText = 'Installation Complete!';
-      if (description) description.innerHTML = '<strong>WSTSC is now on your home screen!</strong><br>Please exit the browser and tap the app icon to start.';
+      if (description) description.innerHTML = '<strong>WSTSC is now on your home screen!</strong><br>Click Open to start your experience.';
       
       if (btn) {
         btn.disabled = false;
-        btn.innerText = 'Launch WSTSC';
+        btn.innerText = 'Open WSTSC';
         btn.onclick = () => {
-          alert('App is ready! Go to your home screen and open the WSTSC icon.');
-          window.location.reload();
+          overlayHiddenManually = true;
+          document.getElementById('pwa-overlay').classList.remove('show');
         };
       }
       
-      // Attempt auto-launch / reload periodically to see if we shift to standalone
-      const launchCheck = setInterval(() => {
+      // Attempt auto-transition
+      setTimeout(() => {
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-          clearInterval(launchCheck);
           window.location.reload();
         }
-      }, 1000);
+      }, 2000);
     });
 
     function setPercentage(val) {
@@ -213,8 +213,9 @@
     async function handleInstallClick() {
       const btn = document.querySelector('.btn-install');
       
-      if (btn.innerText.includes('Launch')) {
-        alert('App is ready! Find the WSTSC icon on your home screen and tap it.');
+      if (btn.innerText.includes('Open')) {
+        overlayHiddenManually = true;
+        document.getElementById('pwa-overlay').classList.remove('show');
         return;
       }
 
@@ -233,10 +234,10 @@
           // Slow down the simulation to better match OS installation speed
           let p = 0;
           const interval = setInterval(() => {
-            p += Math.random() * 5; // Slower progress
+            p += Math.random() * 5; 
             if (p >= 95) {
               p = 95;
-              if (!installInProgress) { // If appinstalled event fired
+              if (!installInProgress) { 
                 p = 100;
                 clearInterval(interval);
               }
@@ -259,6 +260,8 @@
     }
 
     function checkForceState() {
+      if (overlayHiddenManually) return;
+
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const isHttps = window.location.protocol === 'https:';
@@ -271,7 +274,6 @@
       if (shouldForce) {
         overlay.classList.add('show');
         
-        // If we are currently installing, DO NOT change the button text
         if (installInProgress || btn.innerText === 'Installing...' || btn.innerText.includes('Complete')) {
             return;
         }
@@ -281,11 +283,11 @@
           btn.innerText = 'Install Now';
           btn.onclick = handleInstallClick;
         } else {
-          // No prompt? It's likely already installed or in process
           btn.disabled = false;
-          btn.innerText = 'Launch WSTSC';
+          btn.innerText = 'Open WSTSC';
           btn.onclick = () => {
-             alert('WSTSC is already installed. Use the icon on your home screen to open it.');
+             overlayHiddenManually = true;
+             overlay.classList.remove('show');
           };
         }
       } else {
