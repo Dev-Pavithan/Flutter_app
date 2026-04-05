@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_theme.dart';
-import 'pwa_interop.dart';
 import 'screens/dashboard_wrapper.dart';
 import 'screens/login_screen.dart';
 import 'screens/link_device_screen.dart';
@@ -142,17 +141,6 @@ class _SplashGateState extends State<SplashGate> {
 
     if (!mounted) return;
 
-    if (isLoggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardWrapper()),
-      );
-    } else if (!isDeviceLinked) {
-      // First-time setup - force link device
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
-      );
     if (isLoggedIn) {
       Navigator.pushReplacement(
         context,
