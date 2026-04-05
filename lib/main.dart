@@ -7,20 +7,20 @@ import 'pwa_interop.dart';
 import 'screens/dashboard_wrapper.dart';
 import 'screens/login_screen.dart';
 import 'screens/link_device_screen.dart';
+import 'screens/app_lock_screen.dart';
 
-// Global theme notifier for easy switching
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
-final ValueNotifier<int> dashboardIndexNotifier = ValueNotifier(0);
-final ValueNotifier<Map<String, dynamic>?> profileNotifier = ValueNotifier(null);
-final ValueNotifier<int> attendanceRefreshNotifier = ValueNotifier(0);
+final ValueNotifier<bool> appLockNotifier = ValueNotifier(false);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   
-  // Load saved theme preference
   final bool isDarkMode = prefs.getBool('isDarkMode') ?? true;
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+
+  // Check if initial lock is needed
+  final bool lockEnabled = prefs.getBool('biometric_lock_enabled') ?? false;
+  if (lockEnabled) appLockNotifier.value = true;
 
   runApp(AttendanceApp(prefs: prefs));
 }
@@ -40,9 +40,66 @@ class AttendanceApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentMode,
+          builder: (context, child) {
+            return LockWrapper(child: child!);
+          },
           home: SplashGate(prefs: prefs),
         );
       },
+    );
+  }
+}
+
+class LockWrapper extends StatefulWidget {
+  final Widget child;
+  const LockWrapper({super.key, required this.child});
+
+  @override
+  State<LockWrapper> createState() => _LockWrapperState();
+}
+
+class _LockWrapperState extends State<LockWrapper> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    // If user leaves the app, lock it if biometrics are enabled
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('biometric_lock_enabled') ?? false) {
+        appLockNotifier.value = true;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        ValueListenableBuilder<bool>(
+          valueListenable: appLockNotifier,
+          builder: (context, isLocked, _) {
+            if (!isLocked) return const SizedBox.shrink();
+            return Material(
+              color: Colors.transparent,
+              child: AppLockScreen(
+                onUnlocked: () => appLockNotifier.value = false,
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

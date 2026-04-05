@@ -4,6 +4,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../app_theme.dart';
 import '../widgets/custom_app_bar.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/biometric_service.dart';
+
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
 
@@ -14,6 +17,50 @@ class SecurityScreen extends StatefulWidget {
 class _SecurityScreenState extends State<SecurityScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _biometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  void _loadSettings() async {
+    final enabled = await BiometricService.isLockEnabled();
+    setState(() => _biometricEnabled = enabled);
+  }
+
+  Future<void> _toggleBiometrics() async {
+    if (!_biometricEnabled) {
+      // Trying to enable
+      final canAuth = await BiometricService.canCheckBiometrics();
+      if (!canAuth) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometrics not available on this device')),
+        );
+        return;
+      }
+
+      final authenticated = await BiometricService.authenticate();
+      if (authenticated) {
+        await BiometricService.setLockEnabled(true);
+        setState(() => _biometricEnabled = true);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometric Lock Enabled Successfully')),
+        );
+      }
+    } else {
+      // Turning off
+      await BiometricService.setLockEnabled(false);
+      setState(() => _biometricEnabled = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Biometric Lock Disabled')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,21 +235,22 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   const SizedBox(height: 32),
                   Row(
                     children: [
-                      Expanded(child: _buildBiometricCard(LucideIcons.smile, 'FACE ID', isDark)),
+                      Expanded(child: _buildBiometricCard(LucideIcons.smile, 'FACE ID', isDark, isSelected: _biometricEnabled)),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildBiometricCard(LucideIcons.fingerprint, 'TOUCH ID', isDark, isSelected: true)),
+                      Expanded(child: _buildBiometricCard(LucideIcons.fingerprint, 'TOUCH ID', isDark, isSelected: _biometricEnabled)),
                     ],
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _toggleBiometrics,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 56),
-                      backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      backgroundColor: _biometricEnabled ? AppTheme.darkError.withOpacity(0.1) : (isDark ? AppTheme.darkAccent : AppTheme.lightAccent),
+                      foregroundColor: _biometricEnabled ? AppTheme.darkError : (isDark ? Colors.black : Colors.white),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      border: _biometricEnabled ? BorderSide(color: AppTheme.darkError) : null,
                     ),
-                    child: const Text('Enable Biometrics'),
+                    child: Text(_biometricEnabled ? 'Disable Biometric Lock' : 'Enable Biometric Lock'),
                   ),
                 ],
               ),
@@ -223,13 +271,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         width: 60,
                         height: 60,
                         child: CircularProgressIndicator(
-                          value: 0.75,
+                          value: _biometricEnabled ? 1.0 : 0.75,
                           strokeWidth: 6,
                           backgroundColor: Colors.white10,
-                          color: isDark ? Colors.white30 : Colors.grey.shade300,
+                          color: _biometricEnabled ? AppTheme.darkSuccess : (isDark ? Colors.white30 : Colors.grey.shade300),
                         ),
                       ),
-                      Text('75%', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white30)),
+                      Text(_biometricEnabled ? '100%' : '75%', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: _biometricEnabled ? AppTheme.darkSuccess : Colors.white30)),
                     ],
                   ),
                   const SizedBox(width: 20),
@@ -239,7 +287,12 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       children: [
                         Text('Security Health', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
                         const SizedBox(height: 4),
-                        Text('Setting up biometrics will complete your account protection profile.', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          _biometricEnabled 
+                            ? 'Your account is fully protected with biometric security.' 
+                            : 'Setting up biometrics will complete your account protection profile.', 
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ),
                   ),
