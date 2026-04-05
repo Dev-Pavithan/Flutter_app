@@ -165,6 +165,10 @@
     let installInProgress = false;
     let isInstalled = false;
 
+    // INTEROP HELPERS
+    window.isPWAInstalled = () => isInstalled;
+    window.isPWAPromptReady = () => !!deferredPrompt;
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;

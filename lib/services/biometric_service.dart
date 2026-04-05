@@ -26,14 +26,9 @@ class BiometricService {
     }
 
     try {
-      // Trigger STRICT system biometric prompt
+      // Trigger system biometric prompt (Absolute base parameters for cross-platform compatibility)
       return await _auth.authenticate(
         localizedReason: 'Authenticate using Fingerprint to access WSTSC',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-          useErrorDialogs: true,
-        ),
       );
     } catch (e) {
       debugPrint('Authentication Error: $e');

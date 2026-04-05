@@ -9,7 +9,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import '../app_theme.dart';
-import '../mock_data.dart';
+import '../services/api_service.dart';
+import '../services/biometric_service.dart';
 import 'dashboard_wrapper.dart';
 import 'link_device_screen.dart';
 import 'forgot_passcode_screen.dart';
@@ -268,38 +269,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleBiometric() async {
-    final LocalAuthentication auth = LocalAuthentication();
-    
-    // Trigger REAL system biometric prompt directly
-    // Many mobile browsers (PWA) report 'canCheck' as false initially, 
-    // but correctly trigger the system prompt when authenticate() is called.
-    try {
-      final bool didAuth = await auth.authenticate(
-        localizedReason: 'Please authenticate to access your WSTSC account',
-      );
-
-      if (didAuth && mounted) {
-        // SUCCESS: Use the cached pin or proceed with verified state
-        final prefs = await SharedPreferences.getInstance();
-        final cachedPin = prefs.getString('cached_passcode') ?? _correctPasscode;
-        setState(() => _passcode = cachedPin);
-        _verifyPasscode();
-      }
-    } catch (e) {
-      debugPrint('Authentication Error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Verification unavailable or failed. Please use PIN.'),
-            backgroundColor: AppTheme.darkError,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _triggerInstall() async {
     final result = await installPWA().toDart;
     if (result == true || result != null) {
@@ -342,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 64,
                         height: 64,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
+                        errorBuilder: (context, error, stackTrace) => Icon(LucideIcons.school, size: 48, color: AppTheme.darkAccent),
                       ),
                     ),
                   ),
@@ -355,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Passcode Dots
                 _isLoading 
-                  ? const CircularProgressIndicator(color: AppTheme.darkAccent)
+                  ? CircularProgressIndicator(color: AppTheme.darkAccent)
                   : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(4, (index) => _buildDot(index < _passcode.length)),
