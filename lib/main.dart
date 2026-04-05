@@ -10,6 +10,10 @@ import 'screens/link_device_screen.dart';
 import 'screens/app_lock_screen.dart';
 
 final ValueNotifier<bool> appLockNotifier = ValueNotifier(false);
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+final ValueNotifier<int> dashboardIndexNotifier = ValueNotifier(0);
+final ValueNotifier<Map<String, dynamic>?> profileNotifier = ValueNotifier(null);
+final ValueNotifier<int> attendanceRefreshNotifier = ValueNotifier(0);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
