@@ -172,21 +172,24 @@
     });
 
     window.addEventListener('appinstalled', (event) => {
-      console.log('PWA: Installed');
+      console.log('PWA: Installed Successfully');
+      installInProgress = false;
       setPercentage(100);
-      document.querySelector('.progress-status').innerText = 'Ready to launch!';
       
-      // Auto-open logic: notify user and redirect to standalone if possible
-      // Usually, the easiest way to "open instantly" after install in some browsers 
-      // is to inform the user it's done and maybe reload into standalone mode.
+      const btn = document.querySelector('.btn-install');
+      const status = document.querySelector('.progress-status');
+      
+      if (status) status.innerText = 'Successfully Installed!';
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = 'Open WSTSC App';
+        btn.onclick = () => window.location.reload();
+      }
+      
+      // Attempt auto-launch / reload into standalone mode
       setTimeout(() => {
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-          window.location.reload();
-        } else {
-          // If we are still in browser, we prompt them to find the icon or just reload
-          window.location.reload(); 
-        }
-      }, 1500);
+        window.location.reload();
+      }, 2000);
     });
 
     function setPercentage(val) {
@@ -199,10 +202,17 @@
     }
 
     async function handleInstallClick() {
+      const btn = document.querySelector('.btn-install');
+      
+      // If it says "Open in App", just reload to try and trigger standalone
+      if (btn.innerText.includes('Open')) {
+        window.location.reload();
+        return;
+      }
+
       if (!deferredPrompt || installInProgress) return;
       
       installInProgress = true;
-      const btn = document.querySelector('.btn-install');
       btn.disabled = true;
       btn.innerText = 'Installing...';
       document.querySelector('.progress-container').style.display = 'block';
@@ -212,18 +222,16 @@
         const { outcome } = await deferredPrompt.userChoice;
         
         if (outcome === 'accepted') {
-          // Simulate beautiful progress while installation finishes
           let p = 0;
           const interval = setInterval(() => {
-            p += Math.random() * 12;
-            if (p >= 98) {
-              p = 98;
+            p += Math.random() * 15;
+            if (p >= 99) {
+              p = 99;
               clearInterval(interval);
             }
             setPercentage(p);
-          }, 100);
+          }, 80);
         } else {
-          // Rejected, re-enable button
           installInProgress = false;
           btn.disabled = false;
           btn.innerText = 'Install Now';
@@ -249,12 +257,18 @@
 
       if (shouldForce) {
         overlay.classList.add('show');
+        
+        if (installInProgress) return; // Keep "Installing..." state
+
         if (deferredPrompt) {
           btn.disabled = false;
           btn.innerText = 'Install Now';
+          btn.onclick = handleInstallClick;
         } else {
-          btn.disabled = true;
-          btn.innerText = 'Preparing...';
+          // If no prompt, it's either loading or ALREADY INSTALLED
+          btn.disabled = false;
+          btn.innerText = 'Open in App';
+          btn.onclick = () => window.location.reload();
         }
       } else {
         overlay.classList.remove('show');
