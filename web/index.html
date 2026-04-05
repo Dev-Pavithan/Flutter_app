@@ -163,7 +163,6 @@
   <script>
     let deferredPrompt;
     let installInProgress = false;
-    let overlayHiddenManually = false;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -175,30 +174,38 @@
     window.addEventListener('appinstalled', (event) => {
       console.log('PWA: Installed Successfully');
       installInProgress = false;
-      setPercentage(100);
       
       const btn = document.querySelector('.btn-install');
       const status = document.querySelector('.progress-status');
       const description = document.querySelector('.install-card p');
       
-      if (status) status.innerText = 'Installation Complete!';
-      if (description) description.innerHTML = '<strong>WSTSC is now on your home screen!</strong><br>Click Open to start your experience.';
+      if (status) status.innerText = 'App Ready!';
+      if (description) description.innerHTML = '<strong>WSTSC is successfully installed.</strong><br>Tap the button below to start building your attendance records.';
       
       if (btn) {
+        setPercentage(100);
         btn.disabled = false;
         btn.innerText = 'Open WSTSC';
         btn.onclick = () => {
-          overlayHiddenManually = true;
-          document.getElementById('pwa-overlay').classList.remove('show');
+          // Attempt a direct launch via temporary hidden link
+          // This often triggers the OS search for standalone PWA for the URL
+          const link = document.createElement('a');
+          link.href = window.location.origin + window.location.pathname;
+          link.target = '_blank';
+          link.click();
+          
+          // And reload the current tab (which will shift to standalone check if it works)
+          setTimeout(() => { window.location.reload(); }, 100);
         };
       }
       
-      // Attempt auto-transition
-      setTimeout(() => {
+      // Attempt auto-launch / reload periodically to see if standalone mode is picked up
+      const launchCheck = setInterval(() => {
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+          clearInterval(launchCheck);
           window.location.reload();
         }
-      }, 2000);
+      }, 1000);
     });
 
     function setPercentage(val) {
@@ -214,8 +221,9 @@
       const btn = document.querySelector('.btn-install');
       
       if (btn.innerText.includes('Open')) {
-        overlayHiddenManually = true;
-        document.getElementById('pwa-overlay').classList.remove('show');
+        const link = document.createElement('a');
+        link.href = window.location.origin + window.location.pathname;
+        link.click();
         return;
       }
 
@@ -231,20 +239,18 @@
         const { outcome } = await deferredPrompt.userChoice;
         
         if (outcome === 'accepted') {
-          // Slow down the simulation to better match OS installation speed
           let p = 0;
           const interval = setInterval(() => {
-            p += Math.random() * 5; 
-            if (p >= 95) {
-              p = 95;
-              if (!installInProgress) { 
-                p = 100;
+            p += Math.random() * 4; 
+            if (p >= 99) {
+              p = 99;
+              if (!installInProgress) { // If appinstalled event fired
                 clearInterval(interval);
               }
             } else {
                setPercentage(p);
             }
-          }, 200);
+          }, 150);
         } else {
           installInProgress = false;
           btn.disabled = false;
@@ -260,8 +266,6 @@
     }
 
     function checkForceState() {
-      if (overlayHiddenManually) return;
-
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const isHttps = window.location.protocol === 'https:';
@@ -274,7 +278,7 @@
       if (shouldForce) {
         overlay.classList.add('show');
         
-        if (installInProgress || btn.innerText === 'Installing...' || btn.innerText.includes('Complete')) {
+        if (installInProgress || btn.innerText === 'Installing...') {
             return;
         }
 
@@ -286,8 +290,11 @@
           btn.disabled = false;
           btn.innerText = 'Open WSTSC';
           btn.onclick = () => {
-             overlayHiddenManually = true;
-             overlay.classList.remove('show');
+             const link = document.createElement('a');
+             link.href = window.location.origin + window.location.pathname;
+             link.target = '_blank';
+             link.click();
+             setTimeout(() => { window.location.reload(); }, 200);
           };
         }
       } else {
