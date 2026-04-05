@@ -14,13 +14,10 @@ import '../services/biometric_service.dart';
 import 'dashboard_wrapper.dart';
 import 'link_device_screen.dart';
 import 'forgot_passcode_screen.dart';
-import '../pwa_interop.dart';
 import '../main.dart'; // Added for dashboardIndexNotifier support (needed by AppBar if we jump)
 
 class LoginScreen extends StatefulWidget {
-  final bool showInstallPrompt;
-
-  const LoginScreen({super.key, this.showInstallPrompt = false});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -29,10 +26,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   String _passcode = "";
   bool _isLoading = false;
-  final String _correctPasscode = "1234";
   bool _isDeviceLinked = false;
   bool _biometricsEnabled = false;
-  bool _hideInstallBanner = false;
 
   @override
   void initState() {
@@ -269,17 +264,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _triggerInstall() async {
-    final result = await installPWA().toDart;
-    if (result == true || result != null) {
-      setState(() => _hideInstallBanner = true);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    bool showBanner = widget.showInstallPrompt && !_hideInstallBanner;
-
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: Stack(
@@ -367,69 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-
-          // New Modal Themed Install UI
-          if (showBanner)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black87.withOpacity(0.8),
-                padding: const EdgeInsets.all(32),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkSurface,
-                      borderRadius: BorderRadius.circular(36),
-                      border: Border.all(color: AppTheme.darkAccent.withOpacity(0.2)),
-                      boxShadow: [
-                        BoxShadow(color: AppTheme.darkAccent.withOpacity(0.1), blurRadius: 40, spreadRadius: 0),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkAccent.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(LucideIcons.downloadCloud, color: AppTheme.darkAccent, size: 38),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Enhance Your Experience',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Install WSTSC on your home screen for quick access and biometric face login support.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(fontSize: 14, color: Colors.white60, height: 1.5),
-                        ),
-                        const SizedBox(height: 32),
-                        ElevatedButton(
-                          onPressed: _triggerInstall,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.darkAccent,
-                            foregroundColor: Colors.black,
-                            minimumSize: const Size.fromHeight(60),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          ),
-                          child: const Text('Install Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () => setState(() => _hideInstallBanner = true),
-                          child: Text('Maybe Later', style: GoogleFonts.inter(color: Colors.white38)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

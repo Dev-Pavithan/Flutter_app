@@ -153,20 +153,21 @@ class _SplashGateState extends State<SplashGate> {
         context,
         MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
       );
-    } else {
-      bool installed = true;
-      if (kIsWeb) {
-        try {
-          installed = isPWAInstalled();
-        } catch (e) {
-          debugPrint('PWA Interop Error: $e');
-          installed = true; // Fallback
-        }
-      }
-
+    if (isLoggedIn) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LoginScreen(showInstallPrompt: !installed)),
+        MaterialPageRoute(builder: (context) => const DashboardWrapper()),
+      );
+    } else if (!isDeviceLinked) {
+      // First-time setup - force link device
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     }
   }
