@@ -190,14 +190,12 @@
       
       if (btn) {
         setPercentage(100);
-        btn.disabled = false;
+        btn.disabled = false; // FINALLY ENABLE
         btn.innerText = 'Open WSTSC';
         btn.onclick = () => {
           const link = document.createElement('a');
           link.href = window.location.origin + window.location.pathname;
-          link.target = '_blank';
           link.click();
-          setTimeout(() => { window.location.reload(); }, 100);
         };
       }
       
@@ -232,7 +230,7 @@
       if (!deferredPrompt || installInProgress) return;
       
       installInProgress = true;
-      btn.disabled = true;
+      btn.disabled = true; // DISABLE DURING INSTALL
       btn.innerText = 'Installing...';
       document.querySelector('.progress-container').style.display = 'block';
       
@@ -248,6 +246,7 @@
               p = 99;
               if (isInstalled) { // If appinstalled event fired
                 clearInterval(interval);
+                btn.disabled = false; // ENABLE AT REAL 100%
               }
             } else {
                setPercentage(p);
