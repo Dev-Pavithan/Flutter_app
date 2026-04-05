@@ -106,6 +106,23 @@ class _LoginScreenState extends State<LoginScreen> {
     return deviceId;
   }
 
+  Future<void> _handleBiometric() async {
+    final bool didAuth = await BiometricService.authenticate();
+
+    if (didAuth && mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedPin = prefs.getString('cached_passcode') ?? "";
+      if (cachedPin.isNotEmpty) {
+        setState(() => _passcode = cachedPin);
+        _verifyPasscode();
+      }
+    } else if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Authentication failed. Please use PIN.'), behavior: SnackBarBehavior.floating),
+       );
+    }
+  }
+
   void _verifyPasscode() async {
     setState(() => _isLoading = true);
 
@@ -130,34 +147,17 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('auth_token', data['token'] ?? '');
+        await prefs.setString('cached_passcode', _passcode);
 
-        // Save user profile data from API response
-        final userData = data['user'];
-        if (userData != null) {
-          final personData = userData['person'];
-          final roleData = userData['role'];
-          if (personData != null) {
-            final firstName = personData['person_first_name'] ?? '';
-            final lastName = personData['person_last_name'] ?? '';
-            await prefs.setString('user_name', '$firstName $lastName'.trim());
-            await prefs.setString('user_email', personData['person_email'] ?? '');
-          }
-          if (roleData != null) {
-            await prefs.setString('user_role', roleData['role_name'] ?? 'teacher');
-          }
+        final bool bioEnabled = await BiometricService.isLockEnabled();
+        final bool canBio = await BiometricService.isAvailable();
+
+        if (!bioEnabled && canBio && mounted) {
+          _showEnableBiometricDialog(context);
+          return;
         }
         
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const DashboardWrapper(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
-          );
-        }
+        if (mounted) _proceedToDashboard();
       } else if (response.statusCode == 404) {
         final data = jsonDecode(response.body);
         if (data['code'] == 'DEVICE_NOT_FOUND') {
@@ -173,27 +173,84 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } else {
-        final errorMsg = jsonDecode(response.body)['message'] ?? 'Authentication failed';
-        setState(() {
-          _isLoading = false;
-          _passcode = "";
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMsg), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
-          );
-        }
+        _handleLoginError(response);
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _passcode = "";
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Network error: please check connection.'), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
-        );
-      }
+      _handleNetworkError(e);
+    }
+  }
+
+  void _handleLoginError(http.Response response) {
+    final errorMsg = jsonDecode(response.body)['message'] ?? 'Authentication failed';
+    setState(() {
+      _isLoading = false;
+      _passcode = "";
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  void _handleNetworkError(dynamic e) {
+    setState(() {
+      _isLoading = false;
+      _passcode = "";
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Network error: please check connection.'), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  void _showEnableBiometricDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text('Enable Fingerprint Login?', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text('Would you like to use your fingerprint for faster, more secure logins in the future?', 
+          style: GoogleFonts.inter(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => _proceedToDashboard(),
+            child: Text('Maybe Later', style: GoogleFonts.inter(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final ok = await BiometricService.authenticate();
+              if (ok) {
+                await BiometricService.setLockEnabled(true);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fingerprint Login Enabled!')));
+                  _proceedToDashboard();
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkAccent, foregroundColor: Colors.black),
+            child: const Text('Enable Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _proceedToDashboard() {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const DashboardWrapper(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
     }
   }
 
