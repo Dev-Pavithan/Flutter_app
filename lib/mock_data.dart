@@ -1,110 +1,98 @@
 class Student {
-  final String id;
+  final int siid;       // Integer PK — used for attendance API calls
+  final String id;      // String ID like "STU00001"
   final String name;
   bool isPresent;
+  final String? imageUrl;
 
-  Student({required this.id, required this.name, this.isPresent = true});
+  Student({required this.siid, required this.id, required this.name, this.isPresent = true, this.imageUrl});
+
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      siid: (json['studid_int'] as num?)?.toInt() ?? 0,
+      id: json['studid']?.toString() ?? '',
+      name: json['student_first__name'] != null 
+          ? '${json['student_first__name']} ${json['student_family_name']}' 
+          : (json['student_name'] ?? 'Unknown'),
+      isPresent: json['attended'] == null ? true : (json['attended'] == 1 || json['attended'] == true || json['attended'] == "1"),
+      imageUrl: json['stu_image_url'],
+    );
+  }
 }
 
 class ClassRoom {
   final String id;
   final String name;
-  final String teacherName;
+  final String? teacherName;
   final List<Student> students;
 
   ClassRoom({
     required this.id,
     required this.name,
-    required this.teacherName,
-    required this.students,
+    this.teacherName,
+    this.students = const [],
   });
+
+  factory ClassRoom.fromJson(Map<String, dynamic> json) {
+    return ClassRoom(
+      id: json['class_id'] ?? '',
+      name: json['class_name'] ?? 'Unnamed Class',
+      teacherName: json['teacher_name'],
+      students: (json['students'] as List?)?.map((s) => Student.fromJson(s)).toList() ?? [],
+    );
+  }
 }
 
-final mockClasses = [
-  ClassRoom(
-    id: 'c1',
-    name: 'Grade 6A',
-    teacherName: 'Mrs. Johnson',
-    students: List.generate(20, (index) => Student(id: 's${index + 1}', name: 'Student ${index + 1}')),
-  ),
-  ClassRoom(
-    id: 'c2',
-    name: 'Grade 7B',
-    teacherName: 'Mr. Smith',
-    students: List.generate(25, (index) => Student(id: 's${index + 21}', name: 'Student ${index + 1}')),
-  ),
-  ClassRoom(
-    id: 'c3',
-    name: 'Grade 8C',
-    teacherName: 'Ms. Davis',
-    students: List.generate(30, (index) => Student(id: 's${index + 46}', name: 'Student ${index + 1}')),
-  ),
-  ClassRoom(
-    id: 'c4',
-    name: 'Grade 9A',
-    teacherName: 'Mr. Wilson',
-    students: List.generate(22, (index) => Student(id: 's${index + 76}', name: 'Student ${index + 1}')),
-  ),
-  ClassRoom(
-    id: 'c5',
-    name: 'Grade 10 - Biology',
-    teacherName: 'Mrs. Taylor',
-    students: [
-      Student(id: 's101', name: 'Marcus Chen'),
-      Student(id: 's102', name: 'Sarah Miller'),
-      Student(id: 's103', name: 'Alex Rivera'),
-      Student(id: 's104', name: 'Maya Jenkins'),
-      Student(id: 's105', name: 'Elena Petrova'),
-      Student(id: 's106', name: 'Marcus Wong'),
-      ...List.generate(18, (index) => Student(id: 's${index + 107}', name: 'Student ${index + 1}')),
-    ],
-  ),
-];
+class Enrollment {
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String status;
+  final DateTime? submittedAt;
+
+  Enrollment({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    required this.status,
+    this.submittedAt,
+  });
+
+  String get fullName => '$firstName $lastName';
+
+  factory Enrollment.fromJson(Map<String, dynamic> json) {
+    return Enrollment(
+      id: json['enrid'] ?? 0,
+      firstName: json['student_first__name'] ?? '',
+      lastName: json['student_family_name'] ?? '',
+      status: json['student_status'] ?? 'pending',
+      submittedAt: json['submitted_at'] != null ? DateTime.tryParse(json['submitted_at']) : null,
+    );
+  }
+}
 
 class AttendanceHistory {
   final DateTime date;
   final String classId;
-  final List<String> presentStudentNames;
-  final List<String> absentStudentNames;
+  final String className;
+  final int presentCount;
+  final int totalCount;
 
   AttendanceHistory({
     required this.date,
     required this.classId,
-    required this.presentStudentNames,
-    required this.absentStudentNames,
+    required this.className,
+    required this.presentCount,
+    required this.totalCount,
   });
 
-  int get presentCount => presentStudentNames.length;
-  int get totalCount => presentStudentNames.length + absentStudentNames.length;
+  factory AttendanceHistory.fromJson(Map<String, dynamic> json) {
+    return AttendanceHistory(
+      date: DateTime.parse(json['mark_date']),
+      classId: json['class_id'] ?? '',
+      className: json['class_name'] ?? 'Class',
+      presentCount: json['present_count'] ?? 0,
+      totalCount: json['total_count'] ?? 0,
+    );
+  }
 }
-
-final List<AttendanceHistory> mockHistory = [
-  AttendanceHistory(
-    date: DateTime.now().subtract(const Duration(days: 1)),
-    classId: 'c1',
-    presentStudentNames: List.generate(18, (i) => 'Student ${i + 1}'),
-    absentStudentNames: ['Student 19', 'Student 20'],
-  ),
-  AttendanceHistory(
-    date: DateTime.now().subtract(const Duration(days: 1)),
-    classId: 'c2',
-    presentStudentNames: List.generate(22, (i) => 'Student ${i + 1}'),
-    absentStudentNames: ['Student 23', 'Student 24', 'Student 25'],
-  ),
-  AttendanceHistory(
-    date: DateTime.now().subtract(const Duration(days: 2)),
-    classId: 'c1',
-    presentStudentNames: List.generate(19, (i) => 'Student ${i + 1}'),
-    absentStudentNames: ['Student 20'],
-  ),
-  AttendanceHistory(
-    date: DateTime.now().subtract(const Duration(days: 3)),
-    classId: 'c3',
-    presentStudentNames: List.generate(28, (i) => 'Student ${i + 1}'),
-    absentStudentNames: ['Student 29', 'Student 30'],
-  ),
-];
-
-// Mock Credentials
-const String mockEmail = 'admin@school.com';
-const String mockPassword = 'password123';

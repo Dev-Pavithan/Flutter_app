@@ -4,10 +4,17 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'dart:js_interop';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:device_info_plus/device_info_plus.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
 import 'dashboard_wrapper.dart';
+import 'link_device_screen.dart';
+import 'forgot_passcode_screen.dart';
 import '../pwa_interop.dart';
+import '../main.dart'; // Added for dashboardIndexNotifier support (needed by AppBar if we jump)
 
 class LoginScreen extends StatefulWidget {
   final bool showInstallPrompt;
@@ -22,7 +29,33 @@ class _LoginScreenState extends State<LoginScreen> {
   String _passcode = "";
   bool _isLoading = false;
   final String _correctPasscode = "1234";
+  bool _isDeviceLinked = false;
+  bool _biometricsEnabled = false;
   bool _hideInstallBanner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDeviceLink();
+  }
+
+  void _checkDeviceLink() async {
+    final prefs = await SharedPreferences.getInstance();
+    final linked = prefs.getBool('is_device_linked') ?? false;
+    final bioEnabled = prefs.getBool('biometrics_enabled') ?? true;
+    
+    setState(() {
+      _isDeviceLinked = linked;
+      _biometricsEnabled = bioEnabled;
+    });
+
+    if (linked && bioEnabled) {
+      // Auto-trigger biometric on start if enabled
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) _handleBiometric();
+      });
+    }
+  }
 
   void _handleKeyPress(String key) {
     if (_passcode.length < 4) {
@@ -43,36 +76,138 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<String> _getDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? savedId = prefs.getString('device_id');
+    if (savedId != null) return savedId;
+
+    String deviceId = 'unknown';
+    try {
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      if (kIsWeb) {
+        deviceId = 'web_${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          final androidInfo = await deviceInfo.androidInfo;
+          deviceId = androidInfo.id;
+        } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+          final iosInfo = await deviceInfo.iosInfo;
+          deviceId = iosInfo.identifierForVendor ?? 'ios_${DateTime.now().millisecondsSinceEpoch}';
+        } else {
+          deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}';
+        }
+      }
+    } catch (e) {
+      deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}';
+    }
+    
+    await prefs.setString('device_id', deviceId);
+    return deviceId;
+  }
+
   void _verifyPasscode() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
 
-    if (_passcode == _correctPasscode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+    try {
+      final deviceId = await _getDeviceId();
       
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const DashboardWrapper(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-          ),
-        );
+      const String apiUrl = 'https://urbanviewre.com/wstsc-backend/api/device-login';
+      final url = Uri.parse(apiUrl);
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode({
+          'device_id': deviceId,
+          'passcode': _passcode,
+          'device_name': kIsWeb ? 'Web Browser' : defaultTargetPlatform.name,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('auth_token', data['token'] ?? '');
+
+        // Save user profile data from API response
+        final userData = data['user'];
+        if (userData != null) {
+          final personData = userData['person'];
+          final roleData = userData['role'];
+          if (personData != null) {
+            final firstName = personData['person_first_name'] ?? '';
+            final lastName = personData['person_last_name'] ?? '';
+            await prefs.setString('user_name', '$firstName $lastName'.trim());
+            await prefs.setString('user_email', personData['person_email'] ?? '');
+          }
+          if (roleData != null) {
+            await prefs.setString('user_role', roleData['role_name'] ?? 'teacher');
+          }
+        }
+        
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const DashboardWrapper(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+        }
+      } else if (response.statusCode == 404) {
+        final data = jsonDecode(response.body);
+        if (data['code'] == 'DEVICE_NOT_FOUND') {
+          setState(() {
+            _isLoading = false;
+            _passcode = "";
+          });
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
+            );
+          }
+        }
+      } else {
+        final errorMsg = jsonDecode(response.body)['message'] ?? 'Authentication failed';
+        setState(() {
+          _isLoading = false;
+          _passcode = "";
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       setState(() {
         _isLoading = false;
         _passcode = "";
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Incorrect Passcode. Try 1234'), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text('Network error: please check connection.'), backgroundColor: AppTheme.darkError, behavior: SnackBarBehavior.floating),
         );
       }
     }
+  }
+
+  void _navigateToLink() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
+    );
+  }
+
+  void _navigateToForgot() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ForgotPasscodeScreen()),
+    );
   }
 
   Future<void> _handleBiometric() async {
@@ -173,17 +308,19 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleSuccess(BuildContext context) {
+  void _handleSuccess(BuildContext context) async {
     if (mounted) {
       Navigator.pop(context);
-      setState(() => _passcode = _correctPasscode);
+      final prefs = await SharedPreferences.getInstance();
+      final cachedPin = prefs.getString('cached_passcode') ?? _correctPasscode;
+      setState(() => _passcode = cachedPin);
       _verifyPasscode();
     }
   }
 
   Future<void> _triggerInstall() async {
-    final result = await installPWA();
-    if (result == true) {
+    final result = await installPWA().toDart;
+    if (result == true || result != null) {
       setState(() => _hideInstallBanner = true);
     }
   }
@@ -243,6 +380,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 
                 const Spacer(flex: 3),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: _navigateToForgot,
+                      child: Text('Forgot PIN?', style: GoogleFonts.inter(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.normal)),
+                    ),
+                    if (!_isDeviceLinked) ...[
+                      const Text(' • ', style: TextStyle(color: Colors.white24)),
+                      TextButton(
+                        onPressed: _navigateToLink,
+                        child: Text('Register New Device', style: GoogleFonts.inter(color: AppTheme.darkAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 12),
 
                 // Keypad
                 Container(

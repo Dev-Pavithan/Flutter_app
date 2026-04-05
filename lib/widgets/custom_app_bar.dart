@@ -8,7 +8,7 @@ import '../screens/dashboard_wrapper.dart';
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
 
-class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String? title;
   final String? subtitle;
   final bool showLogo;
@@ -19,6 +19,31 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.subtitle,
     this.showLogo = true,
   });
+
+  @override
+  State<CustomAppBar> createState() => _CustomAppBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _CustomAppBarState extends State<CustomAppBar> {
+  String _userName = 'Teacher';
+  String _userRole = 'Teacher';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? 'Teacher';
+      _userRole = prefs.getString('user_role') ?? 'Teacher';
+    });
+  }
 
   void _showNotifications(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -44,7 +69,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             const SizedBox(height: 16),
             _buildNotificationItem(context, 'Attendance Sheet Ready', 'Period 4 attendance is ready to be recorded.', LucideIcons.fileText, isDark),
-            _buildNotificationItem(context, 'Monthly Report', 'Your monthly summary for September is available.', LucideIcons.pieChart, isDark),
+            _buildNotificationItem(context, 'Monthly Report', 'Your monthly summary is available.', LucideIcons.pieChart, isDark),
             const SizedBox(height: 24),
           ],
         ),
@@ -80,6 +105,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   void _showProfileFlow(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -92,13 +119,24 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircleAvatar(
-              radius: 40,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=teacher'),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: accent.withOpacity(0.2), width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  _userName.isNotEmpty ? _userName[0].toUpperCase() : 'T',
+                  style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: accent),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Mr. John Anderson', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text('Senior Mathematics Teacher', style: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+            Text(_userName, style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(_userRole, style: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
             const SizedBox(height: 32),
             _buildProfileOption(context, LucideIcons.user, 'My Profile', isDark),
             _buildProfileOption(context, LucideIcons.settings, 'Settings', isDark),
@@ -117,7 +155,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       onTap: () async {
         if (label == 'My Profile') {
           Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+          dashboardIndexNotifier.value = 4;
         } else if (isLast && label == 'Logout') {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('isLoggedIn', false);
@@ -139,22 +177,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
 
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
       leadingWidth: 180,
-      leading: showLogo
+      leading: widget.showLogo
           ? Padding(
               padding: const EdgeInsets.only(left: 20),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DashboardWrapper()),
-                    (route) => false,
-                  );
+                  dashboardIndexNotifier.value = 0;
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -172,7 +207,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) => Icon(
                           LucideIcons.school, 
-                          color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, 
+                          color: accent, 
                           size: 20
                         ),
                       ),
@@ -183,7 +218,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                        color: accent,
                       ),
                     ),
                   ],
@@ -191,14 +226,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             )
           : null,
-      title: title != null 
+      title: widget.title != null 
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title!, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-              if (subtitle != null)
-                Text(subtitle!, style: GoogleFonts.inter(fontSize: 11, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+              Text(widget.title!, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+              if (widget.subtitle != null)
+                Text(widget.subtitle!, style: GoogleFonts.inter(fontSize: 11, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
             ],
           )
         : null,
@@ -215,29 +250,44 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           onPressed: () => _showNotifications(context),
           icon: const Icon(LucideIcons.bell, size: 20),
         ),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+        ValueListenableBuilder<Map<String, dynamic>?>(
+          valueListenable: profileNotifier,
+          builder: (context, profile, _) {
+            final String currentName = profile != null ? (profile['full_name'] ?? _userName) : _userName;
+            final String? currentPhoto = profile?['photo_url'];
+
+            return GestureDetector(
+              onTap: () => dashboardIndexNotifier.value = 4,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 20, left: 8),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: accent.withOpacity(0.2), width: 2),
+                    image: currentPhoto != null
+                        ? DecorationImage(
+                            image: NetworkImage(currentPhoto + (profile?['updated_at'] != null ? '?v=${profile!['updated_at']}' : '')),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: currentPhoto == null
+                      ? Center(
+                          child: Text(
+                            currentName.isNotEmpty ? currentName[0].toUpperCase() : 'T',
+                            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: accent),
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+            );
           },
-          child: Padding(
-            padding: const EdgeInsets.only(right: 20, left: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.2), width: 2),
-              ),
-              child: const CircleAvatar(
-                radius: 18,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=teacher'),
-                backgroundColor: Colors.transparent,
-              ),
-            ),
-          ),
         ),
       ],
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

@@ -6,9 +6,13 @@ import 'app_theme.dart';
 import 'pwa_interop.dart';
 import 'screens/dashboard_wrapper.dart';
 import 'screens/login_screen.dart';
+import 'screens/link_device_screen.dart';
 
 // Global theme notifier for easy switching
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+final ValueNotifier<int> dashboardIndexNotifier = ValueNotifier(0);
+final ValueNotifier<Map<String, dynamic>?> profileNotifier = ValueNotifier(null);
+final ValueNotifier<int> attendanceRefreshNotifier = ValueNotifier(0);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +64,7 @@ class _SplashGateState extends State<SplashGate> {
 
   void _checkStatus() async {
     final bool isLoggedIn = widget.prefs.getBool('isLoggedIn') ?? false;
+    final bool isDeviceLinked = widget.prefs.getBool('is_device_linked') ?? false;
     
     // Smooth transition
     await Future.delayed(const Duration(milliseconds: 1500)); 
@@ -71,10 +76,21 @@ class _SplashGateState extends State<SplashGate> {
         context,
         MaterialPageRoute(builder: (context) => const DashboardWrapper()),
       );
+    } else if (!isDeviceLinked) {
+      // First-time setup - force link device
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LinkDeviceScreen()),
+      );
     } else {
       bool installed = true;
       if (kIsWeb) {
-        installed = isPWAInstalled();
+        try {
+          installed = isPWAInstalled();
+        } catch (e) {
+          debugPrint('PWA Interop Error: $e');
+          installed = true; // Fallback
+        }
       }
 
       Navigator.pushReplacement(
@@ -94,6 +110,7 @@ class _SplashGateState extends State<SplashGate> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Using a simple styled container as logo to avoid network image hang issues
             Hero(
               tag: 'app_logo',
               child: Container(
@@ -102,16 +119,10 @@ class _SplashGateState extends State<SplashGate> {
                   color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1), 
                   shape: BoxShape.circle
                 ),
-                child: Image.network(
-                  'logo.png',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.school_rounded,
-                    size: 80, 
-                    color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
-                  ),
+                child: Icon(
+                  Icons.school_rounded,
+                  size: 80, 
+                  color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
                 ),
               ),
             ),
@@ -124,14 +135,20 @@ class _SplashGateState extends State<SplashGate> {
                 color: isDark ? Colors.white : Colors.black87,
               ),
             ),
-            const SizedBox(height: 48),
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                strokeWidth: 3, 
-                color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
+            const SizedBox(height: 12),
+            Text(
+              'ATTENDANCE',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+                color: isDark ? Colors.white38 : Colors.black38,
               ),
+            ),
+            const SizedBox(height: 64),
+            CircularProgressIndicator(
+              strokeWidth: 3,
+              color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent
             ),
           ],
         ),

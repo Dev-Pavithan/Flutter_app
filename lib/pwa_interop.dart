@@ -1,10 +1,7 @@
-@JS()
-library pwa_interop;
-
-import 'package:js/js.dart';
+import 'dart:js_interop';
 
 @JS('installPWA')
-external dynamic installPWA();
+external JSPromise installPWA();
 
 @JS('isPWAInstalled')
 external bool isPWAInstalled();

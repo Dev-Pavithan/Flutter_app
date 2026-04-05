@@ -19,46 +19,259 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    body { background-color: #020617; margin: 0; padding: 0; overflow: hidden; }
+    :root {
+      --primary: #27C7D9;
+      --bg: #020617;
+      --glass: rgba(15, 23, 42, 0.8);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+    body { background-color: var(--bg); margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: white; }
+
+    #pwa-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    #pwa-overlay.show {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .install-card {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      padding: 48px 32px;
+      border-radius: 32px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .install-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, rgba(39, 199, 217, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .app-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 24px;
+      background: white;
+      padding: 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      margin-bottom: 24px;
+    }
+
+    h1 { font-size: 32px; font-weight: 800; margin: 0 0 12px 0; letter-spacing: -0.5px; }
+    p { font-size: 16px; color: #94a3b8; margin-bottom: 32px; line-height: 1.6; }
+
+    .btn-install {
+      background: var(--primary);
+      color: #020617;
+      padding: 16px 40px;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 10px 15px -3px rgba(39, 199, 217, 0.3);
+    }
+
+    .btn-install:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 20px -3px rgba(39, 199, 217, 0.4);
+      filter: brightness(1.1);
+    }
+
+    .btn-install:active { transform: translateY(0); }
+
+    .btn-install:disabled {
+      background: #1e293b;
+      color: #64748b;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .progress-container {
+      margin-top: 32px;
+      display: none;
+      width: 100%;
+    }
+
+    .progress-bar-bg {
+      background: #1e293b;
+      height: 8px;
+      border-radius: 4px;
+      width: 100%;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px var(--primary);
+    }
+
+    .progress-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .loading-spin {
+      display: none;
+      margin-top: 24px;
+      color: var(--primary);
+      font-weight: 600;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 
   <script>
     let deferredPrompt;
+    let installInProgress = false;
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       console.log('PWA: Prompt Captured');
-      // Dispatch event for Flutter to hear
-      window.dispatchEvent(new Event('pwa_prompt_ready'));
+      checkForceState();
     });
 
-    window.installPWA = async () => {
-      console.log('PWA: Install requested. deferredPrompt is:', !!deferredPrompt);
-      if (deferredPrompt) {
+    window.addEventListener('appinstalled', (event) => {
+      console.log('PWA: Installed');
+      setPercentage(100);
+      document.querySelector('.progress-status').innerText = 'Ready to launch!';
+      
+      // Auto-open logic: notify user and redirect to standalone if possible
+      // Usually, the easiest way to "open instantly" after install in some browsers 
+      // is to inform the user it's done and maybe reload into standalone mode.
+      setTimeout(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+          window.location.reload();
+        } else {
+          // If we are still in browser, we prompt them to find the icon or just reload
+          window.location.reload(); 
+        }
+      }, 1500);
+    });
+
+    function setPercentage(val) {
+      const fill = document.querySelector('.progress-bar-fill');
+      const text = document.querySelector('.percent-num');
+      if (fill && text) {
+        fill.style.width = val + '%';
+        text.innerText = Math.round(val) + '%';
+      }
+    }
+
+    async function handleInstallClick() {
+      if (!deferredPrompt || installInProgress) return;
+      
+      installInProgress = true;
+      const btn = document.querySelector('.btn-install');
+      btn.disabled = true;
+      btn.innerText = 'Installing...';
+      document.querySelector('.progress-container').style.display = 'block';
+      
+      try {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`PWA Outcome: ${outcome}`);
-        deferredPrompt = null;
-        return outcome === 'accepted';
+        
+        if (outcome === 'accepted') {
+          // Simulate beautiful progress while installation finishes
+          let p = 0;
+          const interval = setInterval(() => {
+            p += Math.random() * 12;
+            if (p >= 98) {
+              p = 98;
+              clearInterval(interval);
+            }
+            setPercentage(p);
+          }, 100);
+        } else {
+          // Rejected, re-enable button
+          installInProgress = false;
+          btn.disabled = false;
+          btn.innerText = 'Install Now';
+          document.querySelector('.progress-container').style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Install Failed', err);
+        installInProgress = false;
+        btn.disabled = false;
+        btn.innerText = 'Install Now';
       }
-      return false;
-    };
+    }
 
-    window.isPWAInstalled = () => {
+    function checkForceState() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      console.log('PWA: isInstalled check:', isStandalone);
-      return isStandalone;
-    };
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isHttps = window.location.protocol === 'https:';
 
-    window.isPWAPromptReady = () => {
-      return !!deferredPrompt;
-    };
+      const shouldForce = !isStandalone && isHttps && !isLocalhost;
+      
+      const overlay = document.getElementById('pwa-overlay');
+      const btn = document.querySelector('.btn-install');
+
+      if (shouldForce) {
+        overlay.classList.add('show');
+        if (deferredPrompt) {
+          btn.disabled = false;
+          btn.innerText = 'Install Now';
+        } else {
+          btn.disabled = true;
+          btn.innerText = 'Preparing...';
+        }
+      } else {
+        overlay.classList.remove('show');
+      }
+    }
+
+    window.addEventListener('load', () => {
+      checkForceState();
+      // Regular check in case state changes
+      setInterval(checkForceState, 2000);
+    });
 
     // Manual SW registration for PWA readiness
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('flutter_service_worker.js?v=1').then(function(registration) {
-          console.log('SW: Registered successfully with scope:', registration.scope);
+          console.log('SW: Registered successfully');
         }, function(err) {
           console.log('SW: Registration failed:', err);
         });
@@ -69,5 +282,24 @@
   <script src="flutter_bootstrap.js" async></script>
 </head>
 <body>
+  <div id="pwa-overlay">
+    <div class="install-card">
+      <img src="logo.png" alt="WSTSC" class="app-icon" id="overlay-logo">
+      <h1>Install WSTSC</h1>
+      <p>This software is designed to run as an application for the best experience. Click the button below to install. No download required.</p>
+      
+      <button class="btn-install" onclick="handleInstallClick()">Install Now</button>
+      
+      <div class="progress-container">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill"></div>
+        </div>
+        <div class="progress-text">
+          <span class="progress-status">Installing Securely...</span>
+          <span class="percent-num">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

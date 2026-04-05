@@ -6,8 +6,11 @@ import 'attendance_screen.dart';
 import 'class_list_screen.dart';
 import 'history_screen.dart';
 import 'summary_screen.dart';
+import 'profile_screen.dart';
 import '../widgets/custom_app_bar.dart';
-import '../mock_data.dart';
+import '../main.dart'; // Import to access dashboardIndexNotifier
+import '../services/api_service.dart';
+import 'dart:convert';
 
 class DashboardWrapper extends StatefulWidget {
   const DashboardWrapper({super.key});
@@ -17,71 +20,125 @@ class DashboardWrapper extends StatefulWidget {
 }
 
 class _DashboardWrapperState extends State<DashboardWrapper> {
-  int _selectedIndex = 0; // Default to DASHBOARD
+  // Use global dashboardIndexNotifier instead of local state
   
   final List<Widget> _screens = [
     const ClassListScreen(),
-    AttendanceScreen(classRoom: mockClasses.last),
+    const AttendanceScreen(),
     const HistoryScreen(),
     const SummaryScreen(),
+    const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialProfile();
+  }
+
+  Future<void> _loadInitialProfile() async {
+    try {
+      final response = await ApiService().getProfile();
+      if (response['success']) {
+        profileNotifier.value = response['data']['profile'];
+      }
+    } catch (e) {
+      debugPrint('Error loading initial profile: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Scaffold(
-      extendBody: true,
-      appBar: CustomAppBar(),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        height: 100,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              )
-            ],
+    return ValueListenableBuilder<int>(
+      valueListenable: dashboardIndexNotifier,
+      builder: (context, selectedIndex, _) {
+        String? currentTitle;
+        bool showLogo = true;
+
+        switch (selectedIndex) {
+          case 1:
+            currentTitle = 'Daily Attendance';
+            showLogo = false;
+            break;
+          case 2:
+            currentTitle = 'Past Records';
+            showLogo = false;
+            break;
+          case 3:
+            currentTitle = 'Performance Insights';
+            showLogo = false;
+            break;
+          case 4:
+            currentTitle = 'Teacher Profile';
+            showLogo = false;
+            break;
+          default:
+            currentTitle = null;
+            showLogo = true;
+        }
+
+        return Scaffold(
+          extendBody: false,
+          appBar: CustomAppBar(
+            title: currentTitle,
+            showLogo: showLogo,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Flexible(
-                child: _buildNavItem(0, LucideIcons.layoutGrid, 'DASHBOARD', isDark),
-              ),
-              Flexible(
-                child: _buildNavItem(1, LucideIcons.users, 'STUDENTS', isDark),
-              ),
-              Flexible(
-                child: _buildNavItem(2, LucideIcons.history, 'HISTORY', isDark),
-              ),
-              Flexible(
-                child: _buildNavItem(3, LucideIcons.barChart3, 'SUMMARY', isDark),
-              ),
-            ],
+          body: IndexedStack(
+            index: selectedIndex,
+            children: _screens,
           ),
-        ),
-      ),
+          bottomNavigationBar: Container(
+            height: 90,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            decoration: const BoxDecoration(
+              color: Colors.transparent,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  )
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Flexible(
+                    child: _buildNavItem(0, LucideIcons.layoutGrid, 'DASHBOARD', isDark, selectedIndex),
+                  ),
+                  Flexible(
+                    child: _buildNavItem(1, LucideIcons.users, 'STUDENTS', isDark, selectedIndex),
+                  ),
+                  Flexible(
+                    child: _buildNavItem(2, LucideIcons.history, 'HISTORY', isDark, selectedIndex),
+                  ),
+                  Flexible(
+                    child: _buildNavItem(3, LucideIcons.barChart3, 'SUMMARY', isDark, selectedIndex),
+                  ),
+                  Flexible(
+                    child: _buildNavItem(4, LucideIcons.user, 'PROFILE', isDark, selectedIndex),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
-    bool isSelected = _selectedIndex == index;
+  Widget _buildNavItem(int index, IconData icon, String label, bool isDark, int selectedIndex) {
+    bool isSelected = selectedIndex == index;
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () => dashboardIndexNotifier.value = index,
       behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,

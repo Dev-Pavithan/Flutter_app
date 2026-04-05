@@ -18,7 +18,7 @@ class InstallScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [AppTheme.backgroundColor, Color(0xFF1E1B4B)],
+                colors: [AppTheme.darkBg, Color(0xFF1E1B4B)],
               ),
             ),
           ),
@@ -35,11 +35,11 @@ class InstallScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.darkAccent.withOpacity(0.1),
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+                        border: Border.all(color: AppTheme.darkAccent.withOpacity(0.2)),
                       ),
-                      child: const Icon(LucideIcons.smartphone, size: 80, color: AppTheme.primaryColor),
+                      child: const Icon(LucideIcons.smartphone, size: 80, color: AppTheme.darkAccent),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -86,7 +86,7 @@ class InstallScreen extends StatelessWidget {
                     },
                     child: Text(
                       'I\'ve already installed it',
-                      style: GoogleFonts.inter(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.inter(color: AppTheme.darkAccent, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -103,7 +103,7 @@ class InstallScreen extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: AppTheme.darkAccent,
           child: Text(number.toString(), style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(width: 16),

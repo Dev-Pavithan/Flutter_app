@@ -4,8 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../app_theme.dart';
 import '../mock_data.dart';
-import '../main.dart';
-import '../widgets/custom_app_bar.dart';
+import '../services/api_service.dart';
+
 
 class AttendanceScreen extends StatefulWidget {
   final ClassRoom? classRoom;
@@ -18,19 +18,56 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerProviderStateMixin {
   late ClassRoom currentClass;
-  late List<Student> students;
-  late List<Student> filteredStudents;
+  List<Student> students = [];
+  List<Student> filteredStudents = [];
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _animationController;
+  final ApiService _api = ApiService();
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    currentClass = widget.classRoom ?? mockClasses.last;
-    students = currentClass.students;
-    filteredStudents = students;
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _animationController.forward();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+    try {
+      if (widget.classRoom != null) {
+        currentClass = widget.classRoom!;
+      } else {
+        final classroomsResponse = await _api.get('classrooms/active');
+        final classroomsData = classroomsResponse['data']['classrooms'] as List;
+        if (classroomsData.isNotEmpty) {
+          currentClass = ClassRoom.fromJson(classroomsData.first);
+        } else {
+          throw Exception('No active classrooms found');
+        }
+      }
+      await _loadStudents();
+    } catch (e) {
+      debugPrint('Error Loading Classrooms: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadStudents() async {
+    try {
+      final response = await _api.get('attendance/class/${currentClass.id}/active-students');
+      final data = response['data'] as List;
+      setState(() {
+        students = data.map((s) => Student.fromJson(s)).toList();
+        filteredStudents = students;
+        _isLoading = false;
+      });
+      debugPrint('Loaded ${students.length} students for class ${currentClass.id}');
+    } catch (e) {
+      debugPrint('Error Loading Students: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -116,15 +153,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              _showSuccess();
+              await _performBulkMarking();
             },
             child: Text('Confirm', style: TextStyle(color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _performBulkMarking() async {
+    setState(() => _isLoading = true);
+    try {
+      final attendanceData = students.map((s) => {
+        'studid': s.siid,          // Integer siid, NOT int.parse(string id)
+        'is_present': s.isPresent
+      }).toList();
+
+      final response = await _api.post('attendance/mark-bulk', {
+        'class_id': currentClass.id,
+        'mark_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'attendance_data': attendanceData
+      });
+
+      if (response['status'] == true) {
+        _showSuccess();
+      }
+      debugPrint('Attendance Mark-Bulk: ${response['message']}');
+    } catch (e) {
+      debugPrint('Error Marking Attendance: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _showSuccess() {
@@ -169,19 +232,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
-    String todayDate = DateFormat('EEEE, MMMM dth').format(DateTime.now());
-    // Adding 'th' suffix is tricky with DateFormat, let's just use manual string for now to match screenshot "Thursday, October 24th"
-    String displayDate = "Thursday, October 24th"; 
-
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              child: Column(
+      backgroundColor: Colors.transparent,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : (students.isEmpty 
+          ? Center(child: Text('No students assigned to this class.', style: Theme.of(context).textTheme.bodyLarge))
+          : SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -198,7 +262,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '$displayDate \u2022 ${students.length} Students',
+                    '${DateFormat('EEEE, d MMMM').format(DateTime.now())} • ${students.length} Students',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ],
@@ -240,14 +304,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
             const SizedBox(height: 24),
 
-            // Summary Cards
+            // Summary Cards — real values from API data
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  Expanded(child: _buildSummaryCard('Present Today', '22', '/ 24', isDark)),
+                  Expanded(child: _buildSummaryCard(
+                    'Present Today',
+                    '${students.where((s) => s.isPresent).length}',
+                    '/ ${students.length}',
+                    isDark)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildSummaryCard('Class Average', '94.2%', '', isDark, isHighlight: true)),
+                  Expanded(child: _buildSummaryCard(
+                    'Absent',
+                    '${students.where((s) => !s.isPresent).length}',
+                    'students',
+                    isDark,
+                    isHighlight: true)),
                 ],
               ),
             ),
@@ -278,33 +351,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               },
             ),
 
-            const SizedBox(height: 100), // Space for button
+            const SizedBox(height: 32),
+            
+            // Save Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ElevatedButton(
+                onPressed: _saveAttendance,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(LucideIcons.checkCircle2, size: 20),
+                    const SizedBox(width: 12),
+                    const Text('Save Attendance'),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
           ],
         ),
-      ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-        ),
-        child: ElevatedButton(
-          onPressed: _saveAttendance,
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 56),
-            backgroundColor: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-            foregroundColor: isDark ? Colors.black : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(LucideIcons.checkCircle2, size: 20),
-              const SizedBox(width: 12),
-              const Text('Save Attendance'),
-            ],
-          ),
-        ),
-      ),
+      )),
     );
   }
 
@@ -363,18 +437,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              'https://i.pravatar.cc/150?u=${student.name}',
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 48,
-                height: 48,
-                color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
-                child: Center(child: Text(student.name.substring(0, 1), style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent))),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent).withOpacity(0.1)),
+            ),
+            child: Center(
+              child: Text(
+                student.name.isNotEmpty ? student.name[0].toUpperCase() : '?',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
+                ),
               ),
             ),
           ),
@@ -385,7 +463,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               children: [
                 Text(student.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary)),
                 const SizedBox(height: 2),
-                Text('Roll No: #${(100 + students.indexOf(student)).toString()}', style: GoogleFonts.inter(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
+                Text('ID: ${student.id}', style: GoogleFonts.inter(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)),
               ],
             ),
           ),
