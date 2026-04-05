@@ -213,28 +213,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleBiometric() async {
     final LocalAuthentication auth = LocalAuthentication();
     
-    // Check if biometric authentication is possible
-    bool canCheck = false;
-    try {
-      canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
-    } catch (e) {
-      debugPrint('Biometric Check Error: $e');
-    }
-
-    if (!canCheck) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biometric security is not available or not set up on this device.'),
-            backgroundColor: AppTheme.darkError,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Trigger REAL system biometric prompt
+    // Trigger REAL system biometric prompt directly
+    // Many mobile browsers (PWA) report 'canCheck' as false initially, 
+    // but correctly trigger the system prompt when authenticate() is called.
     try {
       final bool didAuth = await auth.authenticate(
         localizedReason: 'Please authenticate to access your WSTSC account',
@@ -252,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Verification failed: $e'),
+            content: Text('Verification unavailable or failed. Please use PIN.'),
             backgroundColor: AppTheme.darkError,
             behavior: SnackBarBehavior.floating,
           ),
