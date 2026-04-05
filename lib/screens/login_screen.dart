@@ -333,7 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildKeypadRow(['1', '2', '3']),
                       _buildKeypadRow(['4', '5', '6']),
                       _buildKeypadRow(['7', '8', '9']),
-                      _buildKeypadRow(['0', 'bio', 'del']),
+                      _buildKeypadRow(_biometricsEnabled ? ['0', 'bio', 'del'] : ['', '0', 'del']),
                     ],
                   ),
                 ),
@@ -433,7 +433,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildKey(String key) {
-    if (key == 'bio' && !_biometricsEnabled) {
+    if (key.isEmpty || (key == 'bio' && !_biometricsEnabled)) {
        return const SizedBox(width: 70, height: 70);
     }
 
