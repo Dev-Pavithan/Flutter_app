@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:http/http.dart' as http;
@@ -21,6 +22,8 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
   final _passwordController = TextEditingController();
   final _pinController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscurePIN = true;
   int _step = 1; // 1: Email/Password, 2: Set PIN
 
   Future<String> _getDeviceId() async {
@@ -126,93 +129,300 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.chevronLeft, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              _step == 1 ? 'Link Device' : 'Secure Your App',
-              style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _step == 1 
-                ? 'Sign in with your staff credentials to authorize this device for attendance marking.'
-                : 'Set a 4-digit security PIN for quick access to this device.',
-              style: GoogleFonts.inter(fontSize: 16, color: Colors.white60, height: 1.5),
-            ),
-            const SizedBox(height: 48),
-            
-            if (_step == 1) ...[
-              _buildTextField('Staff Email', _emailController, LucideIcons.mail, false),
-              const SizedBox(height: 20),
-              _buildTextField('Password', _passwordController, LucideIcons.lock, true),
-              const SizedBox(height: 48),
-              _buildButton('Next', () => setState(() => _step = 2)),
-            ] else ...[
-              _buildTextField('4-Digit Security PIN', _pinController, LucideIcons.key, false, isNumber: true, maxLength: 4),
-              const SizedBox(height: 48),
-              _buildButton(_isLoading ? 'Linking...' : 'Complete Setup', _isLoading ? null : _handleLink),
-              const SizedBox(height: 12),
-              Center(
-                child: TextButton(
-                  onPressed: () => setState(() => _step = 1),
-                  child: Text('Back to Login', style: GoogleFonts.inter(color: Colors.white38)),
-                ),
+      body: Stack(
+        children: [
+          // Background Decorative Elements
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.darkAccent.withOpacity(0.05),
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+          Positioned(
+            top: 200,
+            left: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.darkAccent.withOpacity(0.03),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Header / AppBar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(LucideIcons.chevronLeft, color: Colors.white),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 10),
+                        
+                        // Visual Illustration
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.darkAccent.withOpacity(0.1),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.darkAccent.withOpacity(0.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.darkAccent.withOpacity(0.2),
+                                  blurRadius: 30,
+                                  spreadRadius: 5,
+                                )
+                              ],
+                            ),
+                            child: Icon(
+                              _step == 1 ? LucideIcons.smartphone : LucideIcons.shieldCheck,
+                              size: 48,
+                              color: AppTheme.darkAccent,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 32),
+                        
+                        Text(
+                          _step == 1 ? 'Link Device' : 'Secure Your App',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            _step == 1 
+                              ? 'Sign in with your staff credentials to authorize this device for attendance.'
+                              : 'Set a 4-digit security PIN for quick access to this device.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: Colors.white54,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 40),
+
+                        // Form Container / Main Card
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkSurface.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 40,
+                                offset: const Offset(0, 20),
+                              )
+                            ],
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.1, 0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: _step == 1 ? Column(
+                              key: const ValueKey('step1'),
+                              children: [
+                                _buildTextField(
+                                  label: 'Staff Email', 
+                                  controller: _emailController, 
+                                  icon: LucideIcons.mail, 
+                                  isPassword: false,
+                                ),
+                                const SizedBox(height: 16),
+                                _buildTextField(
+                                  label: 'Password', 
+                                  controller: _passwordController, 
+                                  icon: LucideIcons.lock, 
+                                  isPassword: true,
+                                  isObscured: _obscurePassword,
+                                  onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                                const SizedBox(height: 32),
+                                _buildButton('Continue', () => setState(() => _step = 2)),
+                              ],
+                            ) : Column(
+                              key: const ValueKey('step2'),
+                              children: [
+                                _buildTextField(
+                                  label: 'Security PIN', 
+                                  controller: _pinController, 
+                                  icon: LucideIcons.key, 
+                                  isPassword: true,
+                                  isNumber: true, 
+                                  maxLength: 4,
+                                  isObscured: _obscurePIN,
+                                  onToggleObscure: () => setState(() => _obscurePIN = !_obscurePIN),
+                                ),
+                                const SizedBox(height: 32),
+                                _buildButton(
+                                  _isLoading ? 'Processing...' : 'Complete Setup', 
+                                  _isLoading ? null : _handleLink,
+                                  isLoading: _isLoading,
+                                ),
+                                const SizedBox(height: 16),
+                                TextButton(
+                                  onPressed: () => setState(() => _step = 1),
+                                  style: TextButton.styleFrom(foregroundColor: Colors.white38),
+                                  child: Text('Use different account', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 48),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, bool isPassword, {bool isNumber = false, int? maxLength}) {
+  Widget _buildTextField({
+    required String label, 
+    required TextEditingController controller, 
+    required IconData icon, 
+    required bool isPassword, 
+    bool isNumber = false, 
+    int? maxLength,
+    bool? isObscured,
+    VoidCallback? onToggleObscure,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.darkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isObscured ?? false,
         keyboardType: isNumber ? TextInputType.number : TextInputType.emailAddress,
+        inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
         maxLength: maxLength,
-        style: const TextStyle(color: Colors.white),
+        style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           counterText: "",
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white38),
-          prefixIcon: Icon(icon, color: AppTheme.darkAccent, size: 20),
+          labelStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 14),
+          floatingLabelStyle: GoogleFonts.inter(color: AppTheme.darkAccent, fontWeight: FontWeight.bold),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Icon(icon, color: AppTheme.darkAccent, size: 22),
+          ),
+          suffixIcon: isPassword ? IconButton(
+            icon: Icon(
+              isObscured! ? LucideIcons.eyeOff : LucideIcons.eye,
+              color: Colors.white38,
+              size: 20,
+            ),
+            onPressed: onToggleObscure,
+          ) : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         ),
       ),
     );
   }
 
-  Widget _buildButton(String text, VoidCallback? onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.darkAccent,
-        foregroundColor: Colors.black,
-        minimumSize: const Size.fromHeight(60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
+  Widget _buildButton(String text, VoidCallback? onPressed, {bool isLoading = false}) {
+    return Container(
+      width: double.infinity,
+      height: 64,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          if (onPressed != null)
+            BoxShadow(
+              color: AppTheme.darkAccent.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+        ],
       ),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.darkAccent,
+          foregroundColor: Colors.black,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+        ),
+        child: isLoading 
+          ? const SizedBox(
+              width: 24, 
+              height: 24, 
+              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3)
+            )
+          : Text(
+              text, 
+              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+      ),
     );
   }
 }

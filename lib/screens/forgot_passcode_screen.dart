@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -183,6 +184,7 @@ class _ForgotPasscodeScreenState extends State<ForgotPasscodeScreen> {
           controller: controller,
           obscureText: isPassword,
           keyboardType: isNumber ? TextInputType.number : TextInputType.emailAddress,
+          inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
           maxLength: maxLength,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
