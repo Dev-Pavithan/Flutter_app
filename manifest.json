@@ -10,6 +10,9 @@
     "description": "Professional Student Management System.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "launch_handler": {
+        "client_mode": "focus-existing"
+    },
     "icons": [
         {
             "src": "logo.png",
