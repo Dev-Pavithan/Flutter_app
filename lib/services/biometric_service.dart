@@ -21,7 +21,6 @@ class BiometricService {
     try {
       return await _auth.authenticate(
         localizedReason: 'Please authenticate to access WSTSC',
-        stickyAuth: true,
       );
     } on PlatformException catch (e) {
       print('Authentication Error: $e');
