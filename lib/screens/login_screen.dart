@@ -42,7 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _checkDeviceLink() async {
     final prefs = await SharedPreferences.getInstance();
     final linked = prefs.getBool('is_device_linked') ?? false;
-    final bioEnabled = prefs.getBool('biometrics_enabled') ?? true;
+    // MATCHING THE KEY USED IN BIOMETRIC SERVICE
+    final bioEnabled = prefs.getBool('biometric_lock_enabled') ?? false; 
     
     setState(() {
       _isDeviceLinked = linked;
@@ -432,6 +433,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildKey(String key) {
+    if (key == 'bio' && !_biometricsEnabled) {
+       return const SizedBox(width: 70, height: 70);
+    }
+
     Widget child;
     if (key == 'bio') {
       child = const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 32);

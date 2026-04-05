@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _biometricsEnabled = prefs.getBool('biometrics_enabled') ?? true;
+      _biometricsEnabled = prefs.getBool('biometric_lock_enabled') ?? false;
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
     });
   }
@@ -451,7 +451,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 activeColor: AppTheme.darkAccent,
                 onChanged: (val) async {
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('biometrics_enabled', val);
+                  await prefs.setBool('biometric_lock_enabled', val);
                   setState(() => _biometricsEnabled = val);
                 },
               ),
