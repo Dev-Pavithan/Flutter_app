@@ -14,7 +14,7 @@ import '../services/biometric_service.dart';
 import 'dashboard_wrapper.dart';
 import 'link_device_screen.dart';
 import 'forgot_passcode_screen.dart';
-import '../pwa_interop.dart';
+import 'package:wstscattandance/pwa_interop.dart';
 import '../main.dart'; // Added for dashboardIndexNotifier support (needed by AppBar if we jump)
 
 class LoginScreen extends StatefulWidget {

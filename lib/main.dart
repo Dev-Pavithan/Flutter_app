@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_theme.dart';
-import 'pwa_interop.dart';
+import 'package:wstscattandance/pwa_interop.dart';
 import 'screens/dashboard_wrapper.dart';
 import 'screens/login_screen.dart';
 import 'screens/link_device_screen.dart';
