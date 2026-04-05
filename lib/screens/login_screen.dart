@@ -211,110 +211,53 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometric() async {
-    // Show our custom themed biometric scanning dialog immediately
-    if (mounted) {
-      _showScanningDialog();
-    }
-  }
-
-  void _showScanningDialog() {
     final LocalAuthentication auth = LocalAuthentication();
-    bool isAuthenticating = false;
+    
+    // Check if biometric authentication is possible
+    bool canCheck = false;
+    try {
+      canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
+    } catch (e) {
+      debugPrint('Biometric Check Error: $e');
+    }
 
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            // Trigger authentication once the dialog is ready
-            if (!isAuthenticating) {
-              isAuthenticating = true;
-              Future.delayed(const Duration(milliseconds: 500), () async {
-                bool canCheck = false;
-                try {
-                  canCheck = await auth.canCheckBiometrics || await auth.isDeviceSupported();
-                } catch (_) {}
-                
-                if (canCheck) {
-                  try {
-                    final bool didAuth = await auth.authenticate(
-                      localizedReason: 'Please authenticate to login',
-                    );
-
-                    if (didAuth && mounted) {
-                      _handleSuccess(context);
-                    } else if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Authentication failed.'), behavior: SnackBarBehavior.floating),
-                      );
-                    }
-                  } catch (e) {
-                    // Quietly handle errors - we'll allow the UI to stay active for manual simulation
-                  }
-                }
-              });
-            }
-
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkSurface,
-                  borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: AppTheme.darkAccent.withOpacity(0.1)),
-                  boxShadow: [
-                    BoxShadow(color: AppTheme.darkAccent.withOpacity(0.05), blurRadius: 40, spreadRadius: 0),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Biometric Security',
-                      style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Place your finger on the sensor',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(fontSize: 14, color: Colors.white54),
-                    ),
-                    const SizedBox(height: 48),
-                    
-                    // Continuous Looping Fingerprint Pulse
-                    // Tap-to-Simulate enabled for Browser/Demo testing
-                    InkWell(
-                      onTap: () => _handleSuccess(context),
-                      borderRadius: BorderRadius.circular(80),
-                      splashColor: AppTheme.darkAccent.withOpacity(0.2),
-                      highlightColor: Colors.transparent,
-                      child: const _ScanningCircle(),
-                    ),
-                    
-                    const SizedBox(height: 48),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white24)),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    if (!canCheck) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric security is not available or not set up on this device.'),
+            backgroundColor: AppTheme.darkError,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-      },
-    );
-  }
+      }
+      return;
+    }
 
-  void _handleSuccess(BuildContext context) async {
-    if (mounted) {
-      Navigator.pop(context);
-      final prefs = await SharedPreferences.getInstance();
-      final cachedPin = prefs.getString('cached_passcode') ?? _correctPasscode;
-      setState(() => _passcode = cachedPin);
-      _verifyPasscode();
+    // Trigger REAL system biometric prompt
+    try {
+      final bool didAuth = await auth.authenticate(
+        localizedReason: 'Please authenticate to access your WSTSC account',
+      );
+
+      if (didAuth && mounted) {
+        // SUCCESS: Use the cached pin or proceed with verified state
+        final prefs = await SharedPreferences.getInstance();
+        final cachedPin = prefs.getString('cached_passcode') ?? _correctPasscode;
+        setState(() => _passcode = cachedPin);
+        _verifyPasscode();
+      }
+    } catch (e) {
+      debugPrint('Authentication Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification failed: $e'),
+            backgroundColor: AppTheme.darkError,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -550,57 +493,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ),
   );
-}
-
-class _ScanningCircle extends StatefulWidget {
-  const _ScanningCircle();
-  @override
-  State<_ScanningCircle> createState() => _ScanningCircleState();
-}
-
-class _ScanningCircleState extends State<_ScanningCircle> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        double value = 0.8 + (_controller.value * 0.4);
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.darkAccent.withOpacity(0.3 * (2 - value))),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.darkAccent.withOpacity(0.1 * (2 - value)),
-                blurRadius: 20 * value,
-                spreadRadius: 5 * value,
-              )
-            ],
-          ),
-          child: Transform.scale(
-            scale: value,
-            child: const Icon(LucideIcons.fingerprint, color: AppTheme.darkAccent, size: 64),
-          ),
-        );
-      },
-    );
-  }
 }
