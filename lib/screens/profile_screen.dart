@@ -9,6 +9,7 @@ import '../main.dart';
 import '../widgets/custom_app_bar.dart';
 import 'login_screen.dart';
 import '../services/api_service.dart';
+import '../services/biometric_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -450,6 +451,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value: _biometricsEnabled,
                 activeColor: AppTheme.darkAccent,
                 onChanged: (val) async {
+                  if (val) {
+                    // VERIFY IDENTITY BEFORE ENABLING
+                    final authenticated = await BiometricService.authenticate();
+                    if (!authenticated) {
+                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Authentication failed. Cannot enable biometric login.'), behavior: SnackBarBehavior.floating),
+                       );
+                       return;
+                    }
+                  }
+
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('biometric_lock_enabled', val);
                   setState(() => _biometricsEnabled = val);
