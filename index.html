@@ -178,18 +178,27 @@
       
       const btn = document.querySelector('.btn-install');
       const status = document.querySelector('.progress-status');
+      const description = document.querySelector('.install-card p');
       
-      if (status) status.innerText = 'Successfully Installed!';
+      if (status) status.innerText = 'Installation Complete!';
+      if (description) description.innerHTML = '<strong>WSTSC is now on your home screen!</strong><br>Please exit the browser and tap the app icon to start.';
+      
       if (btn) {
         btn.disabled = false;
-        btn.innerText = 'Open WSTSC App';
-        btn.onclick = () => window.location.reload();
+        btn.innerText = 'Launch WSTSC';
+        btn.onclick = () => {
+          alert('App is ready! Go to your home screen and open the WSTSC icon.');
+          window.location.reload();
+        };
       }
       
-      // Attempt auto-launch / reload into standalone mode
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Attempt auto-launch / reload periodically to see if we shift to standalone
+      const launchCheck = setInterval(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+          clearInterval(launchCheck);
+          window.location.reload();
+        }
+      }, 1000);
     });
 
     function setPercentage(val) {
@@ -204,9 +213,8 @@
     async function handleInstallClick() {
       const btn = document.querySelector('.btn-install');
       
-      // If it says "Open in App", just reload to try and trigger standalone
-      if (btn.innerText.includes('Open')) {
-        window.location.reload();
+      if (btn.innerText.includes('Launch')) {
+        alert('App is ready! Find the WSTSC icon on your home screen and tap it.');
         return;
       }
 
@@ -222,15 +230,20 @@
         const { outcome } = await deferredPrompt.userChoice;
         
         if (outcome === 'accepted') {
+          // Slow down the simulation to better match OS installation speed
           let p = 0;
           const interval = setInterval(() => {
-            p += Math.random() * 15;
-            if (p >= 99) {
-              p = 99;
-              clearInterval(interval);
+            p += Math.random() * 5; // Slower progress
+            if (p >= 95) {
+              p = 95;
+              if (!installInProgress) { // If appinstalled event fired
+                p = 100;
+                clearInterval(interval);
+              }
+            } else {
+               setPercentage(p);
             }
-            setPercentage(p);
-          }, 80);
+          }, 200);
         } else {
           installInProgress = false;
           btn.disabled = false;
@@ -258,17 +271,22 @@
       if (shouldForce) {
         overlay.classList.add('show');
         
-        if (installInProgress) return; // Keep "Installing..." state
+        // If we are currently installing, DO NOT change the button text
+        if (installInProgress || btn.innerText === 'Installing...' || btn.innerText.includes('Complete')) {
+            return;
+        }
 
         if (deferredPrompt) {
           btn.disabled = false;
           btn.innerText = 'Install Now';
           btn.onclick = handleInstallClick;
         } else {
-          // If no prompt, it's either loading or ALREADY INSTALLED
+          // No prompt? It's likely already installed or in process
           btn.disabled = false;
-          btn.innerText = 'Open in App';
-          btn.onclick = () => window.location.reload();
+          btn.innerText = 'Launch WSTSC';
+          btn.onclick = () => {
+             alert('WSTSC is already installed. Use the icon on your home screen to open it.');
+          };
         }
       } else {
         overlay.classList.remove('show');
